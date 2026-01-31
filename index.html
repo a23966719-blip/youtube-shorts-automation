@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>정육점 POP 가격표 & 광고 포스터 생성기</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>🥩 정육점 POP 가격표 & 광고 포스터 생성기</h1>
+    <p class="subtitle">클릭 몇 번으로 전문적인 가격표와 포스터를 만들어보세요</p>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="price-tag">POP 가격표</button>
+    <button class="tab-btn" data-tab="poster">광고 포스터</button>
+  </nav>
+
+  <main class="app-main">
+    <!-- ===== POP 가격표 탭 ===== -->
+    <section id="price-tag" class="tab-content active">
+      <div class="editor-layout">
+        <div class="controls-panel">
+          <h2>가격표 설정</h2>
+
+          <div class="form-group">
+            <label for="pt-template">템플릿 선택</label>
+            <select id="pt-template">
+              <option value="classic-red">클래식 레드</option>
+              <option value="premium-black">프리미엄 블랙</option>
+              <option value="fresh-green">신선 그린</option>
+              <option value="sale-yellow">세일 옐로우</option>
+              <option value="modern-blue">모던 블루</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-category">육류 카테고리</label>
+            <select id="pt-category">
+              <option value="beef">🐂 소고기</option>
+              <option value="pork">🐷 돼지고기</option>
+              <option value="chicken">🐔 닭고기</option>
+              <option value="lamb">🐑 양고기</option>
+              <option value="duck">🦆 오리고기</option>
+              <option value="other">기타</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-product">상품명</label>
+            <input type="text" id="pt-product" placeholder="예: 한우 1++ 등심" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="pt-origin">원산지</label>
+            <input type="text" id="pt-origin" placeholder="예: 국내산 (한우)" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="pt-grade">등급</label>
+            <input type="text" id="pt-grade" placeholder="예: 1++ / 1+ / 1 / 2 / 3" maxlength="10">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="pt-price">판매가 (원)</label>
+              <input type="number" id="pt-price" placeholder="예: 45000" min="0">
+            </div>
+            <div class="form-group flex-1">
+              <label for="pt-unit">단위</label>
+              <select id="pt-unit">
+                <option value="100g">100g</option>
+                <option value="200g">200g</option>
+                <option value="300g">300g</option>
+                <option value="500g">500g</option>
+                <option value="600g">600g</option>
+                <option value="1kg">1kg</option>
+                <option value="1pack">1팩</option>
+                <option value="1ea">1마리</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="pt-original-price">정상가 (원, 선택)</label>
+              <input type="number" id="pt-original-price" placeholder="할인 전 가격" min="0">
+            </div>
+            <div class="form-group flex-1">
+              <label for="pt-discount">할인율 표시</label>
+              <input type="text" id="pt-discount" placeholder="예: 30%" maxlength="10">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-subtitle">보조 문구 (선택)</label>
+            <input type="text" id="pt-subtitle" placeholder="예: 오늘만 특가!" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="pt-badge">뱃지 (선택)</label>
+            <select id="pt-badge">
+              <option value="">없음</option>
+              <option value="best">BEST</option>
+              <option value="new">NEW</option>
+              <option value="hot">HOT</option>
+              <option value="sale">SALE</option>
+              <option value="recommend">추천</option>
+              <option value="limited">한정</option>
+              <option value="today">오늘특가</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-size">출력 크기</label>
+            <select id="pt-size">
+              <option value="a5">A5 (148×210mm)</option>
+              <option value="a4" selected>A4 (210×297mm)</option>
+              <option value="a3">A3 (297×420mm)</option>
+              <option value="b5">B5 (182×257mm)</option>
+            </select>
+          </div>
+
+          <div class="btn-group">
+            <button id="pt-preview-btn" class="btn btn-primary">미리보기 적용</button>
+            <button id="pt-download-btn" class="btn btn-success">이미지 다운로드</button>
+          </div>
+        </div>
+
+        <div class="preview-panel">
+          <h2>미리보기</h2>
+          <div class="preview-wrapper" id="pt-preview-wrapper">
+            <div id="pt-canvas" class="price-tag-canvas classic-red">
+              <div class="pt-badge-area"></div>
+              <div class="pt-header">
+                <span class="pt-category-icon">🐂</span>
+                <span class="pt-category-label">소고기</span>
+              </div>
+              <div class="pt-product-name">한우 1++ 등심</div>
+              <div class="pt-origin">원산지: 국내산 (한우)</div>
+              <div class="pt-grade-area">
+                <span class="pt-grade">1++</span>
+              </div>
+              <div class="pt-subtitle-area"></div>
+              <div class="pt-price-area">
+                <div class="pt-original-price"></div>
+                <div class="pt-discount-badge"></div>
+                <div class="pt-price">
+                  <span class="pt-price-number">45,000</span>
+                  <span class="pt-price-won">원</span>
+                </div>
+                <div class="pt-unit">/ 100g</div>
+              </div>
+              <div class="pt-footer">
+                <span>신선한 고기, 정직한 가격</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 광고 포스터 탭 ===== -->
+    <section id="poster" class="tab-content">
+      <div class="editor-layout">
+        <div class="controls-panel">
+          <h2>포스터 설정</h2>
+
+          <div class="form-group">
+            <label for="ps-template">포스터 템플릿</label>
+            <select id="ps-template">
+              <option value="grand-sale">대할인 행사</option>
+              <option value="new-open">신규 오픈</option>
+              <option value="seasonal">계절 특선</option>
+              <option value="weekend">주말 특가</option>
+              <option value="set-menu">세트 할인</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="ps-shop-name">매장명</label>
+            <input type="text" id="ps-shop-name" placeholder="예: 행복한 정육점" maxlength="15">
+          </div>
+
+          <div class="form-group">
+            <label for="ps-title">메인 제목</label>
+            <input type="text" id="ps-title" placeholder="예: 설 명절 대할인!" maxlength="15">
+          </div>
+
+          <div class="form-group">
+            <label for="ps-subtitle">부제목</label>
+            <input type="text" id="ps-subtitle" placeholder="예: 최대 50% 할인" maxlength="25">
+          </div>
+
+          <div class="form-group">
+            <label for="ps-period">행사 기간</label>
+            <input type="text" id="ps-period" placeholder="예: 2026.01.25 ~ 02.05" maxlength="30">
+          </div>
+
+          <div class="form-group">
+            <label>상품 목록 (최대 5개)</label>
+            <div id="ps-products-list">
+              <div class="ps-product-row">
+                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
+                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
+              </div>
+              <div class="ps-product-row">
+                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
+                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
+              </div>
+              <div class="ps-product-row">
+                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
+                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
+              </div>
+            </div>
+            <button id="ps-add-product" class="btn btn-small">+ 상품 추가</button>
+          </div>
+
+          <div class="form-group">
+            <label for="ps-notice">안내 문구 (선택)</label>
+            <input type="text" id="ps-notice" placeholder="예: 전화주문 가능 / 배달 가능" maxlength="30">
+          </div>
+
+          <div class="form-group">
+            <label for="ps-phone">전화번호 (선택)</label>
+            <input type="text" id="ps-phone" placeholder="예: 02-1234-5678" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="ps-address">주소 (선택)</label>
+            <input type="text" id="ps-address" placeholder="예: 서울시 강남구 역삼동 123" maxlength="40">
+          </div>
+
+          <div class="form-group">
+            <label for="ps-size">출력 크기</label>
+            <select id="ps-size">
+              <option value="a4">A4 (210×297mm)</option>
+              <option value="a3" selected>A3 (297×420mm)</option>
+              <option value="b4">B4 (257×364mm)</option>
+            </select>
+          </div>
+
+          <div class="btn-group">
+            <button id="ps-preview-btn" class="btn btn-primary">미리보기 적용</button>
+            <button id="ps-download-btn" class="btn btn-success">이미지 다운로드</button>
+          </div>
+        </div>
+
+        <div class="preview-panel">
+          <h2>미리보기</h2>
+          <div class="preview-wrapper" id="ps-preview-wrapper">
+            <div id="ps-canvas" class="poster-canvas grand-sale">
+              <div class="ps-top-banner">
+                <span>행복한 정육점</span>
+              </div>
+              <div class="ps-main-title">설 명절 대할인!</div>
+              <div class="ps-sub-title">최대 50% 할인</div>
+              <div class="ps-period">📅 2026.01.25 ~ 02.05</div>
+              <div class="ps-product-list">
+                <div class="ps-product-item">
+                  <span class="ps-product-name">한우 등심</span>
+                  <span class="ps-product-dot"></span>
+                  <span class="ps-product-price">45,000원</span>
+                </div>
+                <div class="ps-product-item">
+                  <span class="ps-product-name">삼겹살</span>
+                  <span class="ps-product-dot"></span>
+                  <span class="ps-product-price">15,000원</span>
+                </div>
+                <div class="ps-product-item">
+                  <span class="ps-product-name">양념갈비</span>
+                  <span class="ps-product-dot"></span>
+                  <span class="ps-product-price">25,000원</span>
+                </div>
+              </div>
+              <div class="ps-notice">전화주문 가능 · 배달 가능</div>
+              <div class="ps-contact">
+                <div class="ps-phone">📞 02-1234-5678</div>
+                <div class="ps-address">📍 서울시 강남구 역삼동 123</div>
+              </div>
+              <div class="ps-deco-top-left"></div>
+              <div class="ps-deco-top-right"></div>
+              <div class="ps-deco-bottom-left"></div>
+              <div class="ps-deco-bottom-right"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>&copy; 2026 정육점 POP 가격표 & 포스터 생성기. 브라우저에서 바로 사용하세요.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
