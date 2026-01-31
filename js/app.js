@@ -79,8 +79,11 @@ function initPriceTag() {
     el.addEventListener('change', () => renderPriceTag(fields, canvas));
   });
 
+  const printBtn = $('pt-print-btn');
+
   previewBtn.addEventListener('click', () => renderPriceTag(fields, canvas));
   downloadBtn.addEventListener('click', () => downloadCanvas('pt-canvas', 'pop-가격표'));
+  printBtn.addEventListener('click', () => printCanvas('pt-canvas'));
 
   // Initial render
   renderPriceTag(fields, canvas);
@@ -215,8 +218,11 @@ function initPoster() {
   // Also listen on product inputs
   productsList.addEventListener('input', () => renderPoster(fields, canvas));
 
+  const printBtn = $('ps-print-btn');
+
   previewBtn.addEventListener('click', () => renderPoster(fields, canvas));
   downloadBtn.addEventListener('click', () => downloadCanvas('ps-canvas', '광고포스터'));
+  printBtn.addEventListener('click', () => printCanvas('ps-canvas'));
 
   // Initial render
   renderPoster(fields, canvas);
@@ -327,4 +333,16 @@ function downloadCanvas(canvasId, filenamePrefix) {
     btn.textContent = originalText;
     btn.disabled = false;
   });
+}
+
+/* ========================================
+   인쇄 기능
+======================================== */
+function printCanvas(canvasId) {
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+
+  el.classList.add('print-target');
+  window.print();
+  el.classList.remove('print-target');
 }

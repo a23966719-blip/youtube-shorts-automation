@@ -1011,6 +1011,10 @@ body {
 .set-menu .ps-deco-bottom-right { bottom: 8px; right: 8px; border-left: none; border-top: none; }
 
 
+/* ===== 인쇄 버튼 ===== */
+.btn-print { background: #455a64; color: #fff; }
+.btn-print:hover { background: #37474f; }
+
 /* ===== Footer ===== */
 .app-footer {
   text-align: center;
@@ -1019,4 +1023,26 @@ body {
   font-size: 0.85rem;
   border-top: 1px solid var(--border);
   margin-top: 30px;
+}
+
+/* ===== 인쇄 전용 스타일 ===== */
+@media print {
+  body * { visibility: hidden; }
+  .print-target, .print-target * { visibility: visible; }
+  .print-target {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+  }
+  .price-tag-canvas.print-target {
+    width: 100%;
+    min-height: auto;
+  }
+  .poster-canvas.print-target {
+    width: 100%;
+    min-height: auto;
+  }
+  @page { margin: 10mm; }
 }
