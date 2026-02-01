@@ -100,9 +100,9 @@ describe('formatPrice', () => {
     expect(dom.window.formatPrice(undefined)).toBe('');
   });
 
-  test('음수도 올바르게 포맷팅한다', () => {
-    expect(dom.window.formatPrice(-1000)).toBe('-1,000');
-    expect(dom.window.formatPrice(-50)).toBe('-50');
+  test('음수는 "0"을 반환한다 (가격에 음수 불허)', () => {
+    expect(dom.window.formatPrice(-1000)).toBe('0');
+    expect(dom.window.formatPrice(-50)).toBe('0');
   });
 });
 
@@ -482,7 +482,10 @@ describe('renderPoster - 광고 포스터 렌더링', () => {
 
     dom.window.renderPoster(fields, canvas);
 
-    expect(canvas.querySelector('.ps-product-list')).toBeNull();
+    // 팀C 변경: 빈 상품 목록 시 안내 문구 표시
+    const list = canvas.querySelector('.ps-product-list');
+    expect(list).not.toBeNull();
+    expect(list.classList.contains('ps-empty-notice')).toBe(true);
   });
 
   test('연락처(전화번호, 주소)가 올바르게 표시된다', () => {
