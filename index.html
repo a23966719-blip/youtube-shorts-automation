@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="정육점 POP 가격표와 광고 포스터를 브라우저에서 손쉽게 만들 수 있는 무료 생성기입니다. 다양한 템플릿과 인쇄 기능을 지원합니다.">
   <title>정육점 POP 가격표 & 광고 포스터 생성기</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
@@ -13,14 +14,14 @@
     <p class="subtitle">클릭 몇 번으로 전문적인 가격표와 포스터를 만들어보세요</p>
   </header>
 
-  <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="price-tag">POP 가격표</button>
-    <button class="tab-btn" data-tab="poster">광고 포스터</button>
+  <nav class="tab-nav" role="tablist" aria-label="콘텐츠 탭">
+    <button class="tab-btn active" id="tab-price-tag" data-tab="price-tag" role="tab" aria-selected="true" aria-controls="price-tag">POP 가격표</button>
+    <button class="tab-btn" id="tab-poster" data-tab="poster" role="tab" aria-selected="false" aria-controls="poster">광고 포스터</button>
   </nav>
 
   <main class="app-main">
     <!-- ===== POP 가격표 탭 ===== -->
-    <section id="price-tag" class="tab-content active">
+    <section id="price-tag" class="tab-content active" role="tabpanel" aria-labelledby="tab-price-tag">
       <div class="editor-layout">
         <div class="controls-panel">
           <h2>가격표 설정</h2>
@@ -114,8 +115,8 @@
           </div>
 
           <div class="form-group">
-            <label>상품 이미지 (선택)</label>
-            <div class="image-upload-area">
+            <label id="pt-image-group-label">상품 이미지 (선택)</label>
+            <div class="image-upload-area" role="group" aria-labelledby="pt-image-group-label">
               <input type="file" id="pt-image-upload" accept="image/*" class="file-input">
               <label for="pt-image-upload" class="file-label">파일 선택</label>
               <button id="pt-image-search-btn" class="btn btn-small">무료 이미지 검색</button>
@@ -144,7 +145,7 @@
 
         <div class="preview-panel">
           <h2>미리보기</h2>
-          <div class="preview-wrapper" id="pt-preview-wrapper">
+          <div class="preview-wrapper" id="pt-preview-wrapper" aria-live="polite" aria-label="가격표 미리보기">
             <div id="pt-canvas" class="price-tag-canvas classic-red">
               <div class="pt-badge-area"></div>
               <div class="pt-header">
@@ -176,7 +177,7 @@
     </section>
 
     <!-- ===== 광고 포스터 탭 ===== -->
-    <section id="poster" class="tab-content">
+    <section id="poster" class="tab-content" role="tabpanel" aria-labelledby="tab-poster">
       <div class="editor-layout">
         <div class="controls-panel">
           <h2>포스터 설정</h2>
@@ -213,19 +214,19 @@
           </div>
 
           <div class="form-group">
-            <label>상품 목록 (최대 5개)</label>
-            <div id="ps-products-list">
+            <label id="ps-products-label">상품 목록 (최대 5개)</label>
+            <div id="ps-products-list" role="group" aria-labelledby="ps-products-label">
               <div class="ps-product-row">
-                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
-                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
+                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12" aria-label="상품 1 이름">
+                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15" aria-label="상품 1 가격">
               </div>
               <div class="ps-product-row">
-                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
-                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
+                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12" aria-label="상품 2 이름">
+                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15" aria-label="상품 2 가격">
               </div>
               <div class="ps-product-row">
-                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
-                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
+                <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12" aria-label="상품 3 이름">
+                <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15" aria-label="상품 3 가격">
               </div>
             </div>
             <button id="ps-add-product" class="btn btn-small">+ 상품 추가</button>
@@ -247,8 +248,8 @@
           </div>
 
           <div class="form-group">
-            <label>배경/홍보 이미지 (선택)</label>
-            <div class="image-upload-area">
+            <label id="ps-image-group-label">배경/홍보 이미지 (선택)</label>
+            <div class="image-upload-area" role="group" aria-labelledby="ps-image-group-label">
               <input type="file" id="ps-image-upload" accept="image/*" class="file-input">
               <label for="ps-image-upload" class="file-label">파일 선택</label>
               <button id="ps-image-search-btn" class="btn btn-small">무료 이미지 검색</button>
@@ -276,7 +277,7 @@
 
         <div class="preview-panel">
           <h2>미리보기</h2>
-          <div class="preview-wrapper" id="ps-preview-wrapper">
+          <div class="preview-wrapper" id="ps-preview-wrapper" aria-live="polite" aria-label="포스터 미리보기">
             <div id="ps-canvas" class="poster-canvas grand-sale">
               <div class="ps-top-banner">
                 <span>행복한 정육점</span>
@@ -318,20 +319,20 @@
   </main>
 
   <!-- 무료 이미지 검색 모달 -->
-  <div id="image-search-modal" class="modal-overlay" style="display:none;">
+  <div id="image-search-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="image-search-modal-title">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>무료 이미지 검색 (Pixabay)</h3>
-        <button id="modal-close-btn" class="modal-close">&times;</button>
+        <h3 id="image-search-modal-title">무료 이미지 검색 (Pixabay)</h3>
+        <button id="modal-close-btn" class="modal-close" aria-label="모달 닫기">&times;</button>
       </div>
       <div class="modal-body">
         <div class="search-bar">
-          <input type="text" id="modal-search-input" placeholder="검색어 입력 (예: 소고기, 삼겹살, 정육점)" maxlength="50">
+          <input type="text" id="modal-search-input" placeholder="검색어 입력 (예: 소고기, 삼겹살, 정육점)" maxlength="50" aria-label="이미지 검색어">
           <button id="modal-search-btn" class="btn btn-primary">검색</button>
         </div>
         <p class="search-hint">Pixabay API Key가 없으면 <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com</a>에서 무료 발급 후 아래에 입력하세요.</p>
         <div class="api-key-row">
-          <input type="text" id="pixabay-api-key" placeholder="Pixabay API Key (무료 발급)" maxlength="60">
+          <input type="text" id="pixabay-api-key" placeholder="Pixabay API Key (무료 발급)" maxlength="60" aria-label="Pixabay API Key">
           <button id="save-api-key-btn" class="btn btn-small">저장</button>
         </div>
         <div id="modal-search-results" class="search-results-grid"></div>
