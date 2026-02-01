@@ -3,18 +3,20 @@
    Main Application Logic
 ======================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   initPriceTag();
   initImageFeatures();
   initZoom();
   initCustomText();
-  loadSavedImages();
+  initProductStorage();
+  initSlideView();
+  renderSavedProductsList();
 });
 
 /* ========================================
-   POP 가격표 기능
+   기본 유틸
 ======================================== */
-const CATEGORY_MAP = {
+var CATEGORY_MAP = {
   beef: { icon: '', label: '소고기' },
   pork: { icon: '', label: '돼지고기' },
   chicken: { icon: '', label: '닭고기' },
@@ -23,7 +25,7 @@ const CATEGORY_MAP = {
   other: { icon: '', label: '기타' },
 };
 
-const BADGE_MAP = {
+var BADGE_MAP = {
   best: { text: 'BEST', cls: 'badge-best' },
   new: { text: 'NEW', cls: 'badge-new' },
   hot: { text: 'HOT', cls: 'badge-hot' },
@@ -33,26 +35,30 @@ const BADGE_MAP = {
   today: { text: '오늘특가', cls: 'badge-today' },
 };
 
+var TEMPLATE_COLORS = {
+  'classic-red': '#d32f2f',
+  'premium-black': '#1a1a1a',
+  'fresh-green': '#388e3c',
+  'sale-yellow': '#f57f17',
+  'modern-blue': '#1565c0',
+};
+
 function formatPrice(num) {
   if (num == null || num === '') return '';
-  const n = Number(num);
+  var n = Number(num);
   if (isNaN(n) || !isFinite(n) || n < 0) return '0';
   return n.toLocaleString('ko-KR');
 }
 
 function escapeHtml(str) {
-  const div = document.createElement('div');
+  var div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
 }
 
 function escapeAttr(str) {
   if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function isSafeImageSrc(url) {
@@ -60,10 +66,16 @@ function isSafeImageSrc(url) {
   return /^(data:image\/|https?:\/\/)/.test(url);
 }
 
-function initPriceTag() {
-  const $ = id => document.getElementById(id);
+/* ========================================
+   POP 가격표 기능
+======================================== */
+var ptFields = null;
+var ptCanvas = null;
 
-  const fields = {
+function initPriceTag() {
+  var $ = function(id) { return document.getElementById(id); };
+
+  ptFields = {
     template: $('pt-template'),
     orientation: $('pt-orientation'),
     category: $('pt-category'),
@@ -79,106 +91,154 @@ function initPriceTag() {
     size: $('pt-size'),
   };
 
-  const canvas = $('pt-canvas');
-  const downloadBtn = $('pt-download-btn');
-  const printBtn = $('pt-print-btn');
+  ptCanvas = $('pt-canvas');
 
-  Object.values(fields).forEach(el => {
+  Object.values(ptFields).forEach(function(el) {
     if (!el) return;
-    el.addEventListener('input', () => renderPriceTag(fields, canvas));
-    el.addEventListener('change', () => renderPriceTag(fields, canvas));
+    el.addEventListener('input', function() { renderPriceTag(ptFields, ptCanvas); });
+    el.addEventListener('change', function() { renderPriceTag(ptFields, ptCanvas); });
   });
 
-  downloadBtn.addEventListener('click', () => downloadCanvas('pt-canvas', 'pop-가격표'));
-  printBtn.addEventListener('click', () => printCanvas('pt-canvas'));
+  $('pt-download-btn').addEventListener('click', function() { downloadCanvas('pt-canvas', 'pop-가격표'); });
+  $('pt-print-btn').addEventListener('click', function() { printCanvas('pt-canvas'); });
 
-  renderPriceTag(fields, canvas);
+  renderPriceTag(ptFields, ptCanvas);
 }
 
 function renderPriceTag(fields, canvas) {
-  const template = fields.template.value;
-  const orientation = fields.orientation.value;
-  const cat = CATEGORY_MAP[fields.category.value] || CATEGORY_MAP.other;
-  const product = fields.product.value || '상품명';
-  const origin = fields.origin.value;
-  const grade = fields.grade.value;
-  const price = fields.price.value;
-  const unit = fields.unit.value;
-  const originalPrice = fields.originalPrice.value;
-  const discount = fields.discount.value;
-  const subtitle = fields.subtitle.value;
-  const badgeKey = fields.badge.value;
+  var template = fields.template.value;
+  var orientation = fields.orientation.value;
+  var cat = CATEGORY_MAP[fields.category.value] || CATEGORY_MAP.other;
+  var product = fields.product.value || '상품명';
+  var origin = fields.origin.value;
+  var grade = fields.grade.value;
+  var price = fields.price.value;
+  var unit = fields.unit.value;
+  var originalPrice = fields.originalPrice.value;
+  var discount = fields.discount.value;
+  var subtitle = fields.subtitle.value;
+  var badgeKey = fields.badge.value;
+  var isLandscape = orientation === 'landscape';
 
-  // Template + orientation class
-  canvas.className = 'price-tag-canvas ' + template;
-  if (orientation === 'landscape') {
-    canvas.classList.add('landscape');
-  }
+  canvas.className = 'price-tag-canvas ' + template + (isLandscape ? ' landscape' : '');
 
   // Badge
-  const badgeArea = canvas.querySelector('.pt-badge-area');
+  var badgeArea = canvas.querySelector('.pt-badge-area');
   if (badgeKey && BADGE_MAP[badgeKey]) {
-    const b = BADGE_MAP[badgeKey];
+    var b = BADGE_MAP[badgeKey];
     badgeArea.innerHTML = '<span class="badge ' + b.cls + '">' + b.text + '</span>';
   } else {
     badgeArea.innerHTML = '';
   }
 
-  // Header
   canvas.querySelector('.pt-category-icon').textContent = cat.icon;
   canvas.querySelector('.pt-category-label').textContent = cat.label;
 
-  // Product name
-  canvas.querySelector('.pt-product-name').textContent = product;
+  // Body area - 가로모드일 때 이미지 왼쪽 / 텍스트 오른쪽
+  var body = canvas.querySelector('.pt-body');
+  var imageArea = body.querySelector('.pt-image-area');
+  var hasImage = currentImages.pt && isSafeImageSrc(currentImages.pt);
 
-  // Origin
-  const originEl = canvas.querySelector('.pt-origin');
-  originEl.textContent = origin ? '원산지: ' + origin : '';
-  originEl.style.display = origin ? 'block' : 'none';
-
-  // Grade
-  const gradeArea = canvas.querySelector('.pt-grade-area');
-  if (grade) {
-    gradeArea.innerHTML = '<span class="pt-grade">' + escapeHtml(grade) + '</span>';
-    gradeArea.style.display = 'block';
-  } else {
-    gradeArea.innerHTML = '';
-    gradeArea.style.display = 'none';
-  }
-
-  // Subtitle
-  const subtitleArea = canvas.querySelector('.pt-subtitle-area');
-  subtitleArea.textContent = subtitle || '';
-  subtitleArea.style.display = subtitle ? 'block' : 'none';
-
-  // Image
-  let imageArea = canvas.querySelector('.pt-image-area');
-  if (!imageArea) {
-    imageArea = document.createElement('div');
-    imageArea.className = 'pt-image-area';
-    const customTexts = canvas.querySelector('.pt-custom-texts');
-    if (customTexts) {
-      customTexts.before(imageArea);
-    } else {
-      canvas.appendChild(imageArea);
+  if (isLandscape && hasImage) {
+    // 가로: 이미지(왼쪽) + 정보(오른쪽)
+    var rightDiv = body.querySelector('.pt-body-right');
+    if (!rightDiv) {
+      rightDiv = document.createElement('div');
+      rightDiv.className = 'pt-body-right';
     }
-  }
-  imageArea.innerHTML = '';
-  if (currentImages.pt && isSafeImageSrc(currentImages.pt)) {
-    const img = document.createElement('img');
+    // 이미지 영역
+    imageArea.innerHTML = '';
+    imageArea.style.display = 'block';
+    var img = document.createElement('img');
     img.src = currentImages.pt;
     img.alt = '상품 이미지';
     imageArea.appendChild(img);
-    imageArea.style.display = 'block';
+
+    // 오른쪽에 상품 정보
+    rightDiv.innerHTML = '';
+    var nameDiv = document.createElement('div');
+    nameDiv.className = 'pt-product-name';
+    nameDiv.textContent = product;
+    rightDiv.appendChild(nameDiv);
+
+    if (origin) {
+      var originDiv = document.createElement('div');
+      originDiv.className = 'pt-origin';
+      originDiv.textContent = '원산지: ' + origin;
+      rightDiv.appendChild(originDiv);
+    }
+    if (grade) {
+      var gradeDiv = document.createElement('div');
+      gradeDiv.className = 'pt-grade-area';
+      gradeDiv.innerHTML = '<span class="pt-grade">' + escapeHtml(grade) + '</span>';
+      rightDiv.appendChild(gradeDiv);
+    }
+    if (subtitle) {
+      var subDiv = document.createElement('div');
+      subDiv.className = 'pt-subtitle-area';
+      subDiv.textContent = subtitle;
+      subDiv.style.display = 'block';
+      rightDiv.appendChild(subDiv);
+    }
+
+    // 기존 직접 자식 요소 숨김
+    var directName = body.querySelector(':scope > .pt-product-name');
+    var directOrigin = body.querySelector(':scope > .pt-origin');
+    var directGrade = body.querySelector(':scope > .pt-grade-area');
+    var directSub = body.querySelector(':scope > .pt-subtitle-area');
+    if (directName) directName.style.display = 'none';
+    if (directOrigin) directOrigin.style.display = 'none';
+    if (directGrade) directGrade.style.display = 'none';
+    if (directSub) directSub.style.display = 'none';
+
+    if (!body.querySelector('.pt-body-right')) {
+      body.appendChild(rightDiv);
+    }
   } else {
-    imageArea.style.display = 'none';
+    // 세로 모드 또는 이미지 없음
+    var existingRight = body.querySelector('.pt-body-right');
+    if (existingRight) existingRight.remove();
+
+    var directName = body.querySelector(':scope > .pt-product-name');
+    var directOrigin = body.querySelector(':scope > .pt-origin');
+    var directGrade = body.querySelector(':scope > .pt-grade-area');
+    var directSub = body.querySelector(':scope > .pt-subtitle-area');
+
+    if (directName) { directName.textContent = product; directName.style.display = ''; }
+    if (directOrigin) {
+      directOrigin.textContent = origin ? '원산지: ' + origin : '';
+      directOrigin.style.display = origin ? 'block' : 'none';
+    }
+    if (directGrade) {
+      if (grade) {
+        directGrade.innerHTML = '<span class="pt-grade">' + escapeHtml(grade) + '</span>';
+        directGrade.style.display = 'block';
+      } else {
+        directGrade.innerHTML = '';
+        directGrade.style.display = 'none';
+      }
+    }
+    if (directSub) {
+      directSub.textContent = subtitle || '';
+      directSub.style.display = subtitle ? 'block' : 'none';
+    }
+
+    imageArea.innerHTML = '';
+    if (hasImage) {
+      var img = document.createElement('img');
+      img.src = currentImages.pt;
+      img.alt = '상품 이미지';
+      imageArea.appendChild(img);
+      imageArea.style.display = 'block';
+    } else {
+      imageArea.style.display = 'none';
+    }
   }
 
-  // Custom texts
   renderCustomTextsOnCanvas();
 
-  // Price area
-  const originalPriceEl = canvas.querySelector('.pt-original-price');
+  // Price
+  var originalPriceEl = canvas.querySelector('.pt-original-price');
   if (originalPrice) {
     originalPriceEl.textContent = formatPrice(originalPrice) + '원';
     originalPriceEl.style.display = 'block';
@@ -187,7 +247,7 @@ function renderPriceTag(fields, canvas) {
     originalPriceEl.style.display = 'none';
   }
 
-  const discountBadge = canvas.querySelector('.pt-discount-badge');
+  var discountBadge = canvas.querySelector('.pt-discount-badge');
   if (discount) {
     discountBadge.textContent = discount;
     discountBadge.style.display = 'inline-block';
@@ -201,49 +261,35 @@ function renderPriceTag(fields, canvas) {
 }
 
 /* ========================================
-   이미지 다운로드 (html2canvas)
+   다운로드 / 인쇄
 ======================================== */
 function downloadCanvas(canvasId, filenamePrefix) {
-  const el = document.getElementById(canvasId);
+  var el = document.getElementById(canvasId);
   if (!el) return;
+  var scale = 2;
+  var sizeSelect = document.getElementById('pt-size');
+  if (sizeSelect && (sizeSelect.value === 'a3' || sizeSelect.value === 'b4')) scale = 3;
 
-  let scale = 2;
-  const sizeSelect = document.getElementById('pt-size');
-  if (sizeSelect) {
-    const size = sizeSelect.value;
-    if (size === 'a3' || size === 'b4') scale = 3;
-  }
-
-  const btn = document.getElementById('pt-download-btn');
-  const originalText = btn.textContent;
+  var btn = document.getElementById('pt-download-btn');
+  var originalText = btn.textContent;
   btn.textContent = '생성 중...';
   btn.disabled = true;
 
-  html2canvas(el, {
-    scale: scale,
-    useCORS: true,
-    backgroundColor: null,
-    logging: false,
-  }).then(canvasEl => {
-    const link = document.createElement('a');
-    const now = new Date();
-    const timestamp = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
-    link.download = filenamePrefix + '_' + timestamp + '.png';
-    link.href = canvasEl.toDataURL('image/png');
-    link.click();
-  }).catch(function() {
-    alert('이미지 생성에 실패했습니다. 다시 시도해주세요.');
-  }).finally(() => {
-    btn.textContent = originalText;
-    btn.disabled = false;
-  });
+  html2canvas(el, { scale: scale, useCORS: true, backgroundColor: null, logging: false })
+    .then(function(c) {
+      var link = document.createElement('a');
+      var now = new Date();
+      var ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+      link.download = filenamePrefix + '_' + ts + '.png';
+      link.href = c.toDataURL('image/png');
+      link.click();
+    })
+    .catch(function() { alert('이미지 생성에 실패했습니다.'); })
+    .finally(function() { btn.textContent = originalText; btn.disabled = false; });
 }
 
-/* ========================================
-   인쇄 기능
-======================================== */
 function printCanvas(canvasId) {
-  const el = document.getElementById(canvasId);
+  var el = document.getElementById(canvasId);
   if (!el) return;
   el.classList.add('print-target');
   window.print();
@@ -251,47 +297,33 @@ function printCanvas(canvasId) {
 }
 
 /* ========================================
-   이미지 업로드 / Google 검색 / 자동 저장
+   이미지 업로드 / Google 검색
 ======================================== */
-const currentImages = { pt: null };
-
-const STORAGE_KEY_IMAGES = 'butcher-poster-saved-images';
+var currentImages = { pt: null };
 
 function initImageFeatures() {
-  document.getElementById('pt-image-upload').addEventListener('change', (e) => {
-    handleFileUpload(e, 'pt');
-  });
-  document.getElementById('pt-image-remove-btn').addEventListener('click', () => {
-    removeImage('pt');
-  });
-  document.getElementById('pt-image-search-btn').addEventListener('click', () => {
-    openGoogleImageSearch();
-  });
+  document.getElementById('pt-image-upload').addEventListener('change', function(e) { handleFileUpload(e, 'pt'); });
+  document.getElementById('pt-image-remove-btn').addEventListener('click', function() { removeImage('pt'); });
+  document.getElementById('pt-image-search-btn').addEventListener('click', openGoogleImageSearch);
 }
 
 function handleFileUpload(e, target) {
-  const file = e.target.files[0];
+  var file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const dataUrl = ev.target.result;
-    setImage(target, dataUrl);
-    saveImageToStorage(target, dataUrl, file.name);
-  };
+  var reader = new FileReader();
+  reader.onload = function(ev) { setImage(target, ev.target.result); };
   reader.readAsDataURL(file);
 }
 
 function setImage(target, dataUrl) {
   if (!isSafeImageSrc(dataUrl)) return;
   currentImages[target] = dataUrl;
-
-  const preview = document.getElementById(target + '-image-preview');
+  var preview = document.getElementById(target + '-image-preview');
   preview.innerHTML = '';
-  const img = document.createElement('img');
+  var img = document.createElement('img');
   img.src = dataUrl;
   img.alt = '미리보기';
   preview.appendChild(img);
-
   document.getElementById(target + '-image-remove-btn').style.display = 'inline-block';
   triggerRender();
 }
@@ -301,127 +333,41 @@ function removeImage(target) {
   document.getElementById(target + '-image-preview').innerHTML = '';
   document.getElementById(target + '-image-remove-btn').style.display = 'none';
   document.getElementById(target + '-image-upload').value = '';
-
-  document.querySelectorAll('#' + target + '-saved-images .saved-thumb').forEach(
-    function(img) { img.classList.remove('active'); }
-  );
   triggerRender();
 }
 
 function triggerRender() {
-  const template = document.getElementById('pt-template');
-  if (template) {
-    template.dispatchEvent(new Event('change'));
-  }
+  if (ptFields && ptCanvas) renderPriceTag(ptFields, ptCanvas);
 }
 
-/* Google 이미지 검색 */
 function openGoogleImageSearch() {
-  const product = document.getElementById('pt-product').value || '정육점 고기';
-  const query = encodeURIComponent(product + ' 정육점');
-  window.open('https://www.google.com/search?tbm=isch&q=' + query, '_blank');
-}
-
-/* localStorage 자동 저장 */
-function saveImageToStorage(target, dataUrl, name) {
-  let saved;
-  try {
-    saved = JSON.parse(localStorage.getItem(STORAGE_KEY_IMAGES) || '{}');
-  } catch (e) {
-    saved = {};
-  }
-  if (!saved[target]) saved[target] = [];
-
-  const idx = saved[target].findIndex(function(item) { return item.name === name; });
-  if (idx >= 0) {
-    saved[target][idx].data = dataUrl;
-  } else {
-    saved[target].unshift({ name: name, data: dataUrl });
-    if (saved[target].length > 10) saved[target].pop();
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(saved));
-  } catch (e) {
-    if (saved[target].length > 3) {
-      saved[target] = saved[target].slice(0, 3);
-      try {
-        localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(saved));
-      } catch (_) {
-        alert('저장 공간이 부족합니다.');
-      }
-    }
-  }
-  renderSavedImages(target);
-}
-
-function loadSavedImages() {
-  renderSavedImages('pt');
-}
-
-function renderSavedImages(target) {
-  const container = document.getElementById(target + '-saved-images');
-  if (!container) return;
-  let saved;
-  try {
-    saved = JSON.parse(localStorage.getItem(STORAGE_KEY_IMAGES) || '{}');
-  } catch (e) {
-    saved = {};
-  }
-  const items = saved[target] || [];
-
-  if (items.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = items.map(function(item, i) {
-    if (!isSafeImageSrc(item.data)) return '';
-    return '<img class="saved-thumb" src="' + escapeAttr(item.data) + '" alt="' + escapeAttr(item.name) + '" title="' + escapeAttr(item.name) + '" data-index="' + i + '">';
-  }).join('');
-
-  container.querySelectorAll('.saved-thumb').forEach(function(img) {
-    img.addEventListener('click', function() {
-      var index = parseInt(img.dataset.index);
-      var data = items[index].data;
-      setImage(target, data);
-      container.querySelectorAll('.saved-thumb').forEach(function(t) { t.classList.remove('active'); });
-      img.classList.add('active');
-    });
-  });
+  var product = document.getElementById('pt-product').value || '정육점 고기';
+  window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(product + ' 정육점'), '_blank');
 }
 
 /* ========================================
-   확대/축소 기능
+   확대/축소
 ======================================== */
-let currentZoom = 100;
+var currentZoom = 100;
 
 function initZoom() {
-  document.getElementById('zoom-in-btn').addEventListener('click', function() {
-    setZoom(currentZoom + 20);
-  });
-  document.getElementById('zoom-out-btn').addEventListener('click', function() {
-    setZoom(currentZoom - 20);
-  });
-  document.getElementById('zoom-reset-btn').addEventListener('click', function() {
-    setZoom(100);
-  });
+  document.getElementById('zoom-in-btn').addEventListener('click', function() { setZoom(currentZoom + 20); });
+  document.getElementById('zoom-out-btn').addEventListener('click', function() { setZoom(currentZoom - 20); });
+  document.getElementById('zoom-reset-btn').addEventListener('click', function() { setZoom(100); });
 }
 
 function setZoom(level) {
   if (level < 40) level = 40;
   if (level > 200) level = 200;
   currentZoom = level;
-
   var canvas = document.getElementById('pt-canvas');
   canvas.style.transform = 'scale(' + (level / 100) + ')';
   canvas.style.transformOrigin = 'top center';
-
   document.getElementById('zoom-level').textContent = level + '%';
 }
 
 /* ========================================
-   텍스트 추가 기능
+   텍스트 추가
 ======================================== */
 var customTexts = [];
 
@@ -436,13 +382,8 @@ function addCustomText() {
   var input = document.getElementById('pt-custom-text');
   var text = input.value.trim();
   if (!text) return;
-
-  var size = document.getElementById('pt-text-size').value;
-  var color = document.getElementById('pt-text-color').value;
-
-  customTexts.push({ text: text, size: size, color: color });
+  customTexts.push({ text: text, size: document.getElementById('pt-text-size').value, color: document.getElementById('pt-text-color').value });
   input.value = '';
-
   renderCustomTextList();
   renderCustomTextsOnCanvas();
 }
@@ -455,38 +396,325 @@ function removeCustomText(index) {
 
 function renderCustomTextList() {
   var container = document.getElementById('pt-text-list');
-  if (customTexts.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
+  if (!customTexts.length) { container.innerHTML = ''; return; }
   container.innerHTML = customTexts.map(function(item, i) {
-    return '<div class="custom-text-item">' +
-      '<span class="text-color-dot" style="background:' + escapeAttr(item.color) + '"></span>' +
-      '<span class="text-preview">' + escapeHtml(item.text) + ' (' + item.size + 'px)</span>' +
-      '<button class="btn-remove-text" data-index="' + i + '">x</button>' +
-      '</div>';
+    return '<div class="custom-text-item"><span class="text-color-dot" style="background:' + escapeAttr(item.color) + '"></span><span class="text-preview">' + escapeHtml(item.text) + ' (' + item.size + 'px)</span><button class="btn-remove-text" data-index="' + i + '">x</button></div>';
   }).join('');
-
   container.querySelectorAll('.btn-remove-text').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      removeCustomText(parseInt(btn.dataset.index));
-    });
+    btn.addEventListener('click', function() { removeCustomText(parseInt(btn.dataset.index)); });
   });
 }
 
 function renderCustomTextsOnCanvas() {
-  var area = document.querySelector('.pt-custom-texts');
+  var area = document.querySelector('#pt-canvas .pt-custom-texts');
   if (!area) return;
-
-  if (customTexts.length === 0) {
-    area.innerHTML = '';
-    area.style.display = 'none';
-    return;
-  }
-
+  if (!customTexts.length) { area.innerHTML = ''; area.style.display = 'none'; return; }
   area.style.display = 'block';
   area.innerHTML = customTexts.map(function(item) {
     return '<div class="pt-custom-text-line" style="font-size:' + item.size + 'px;color:' + escapeAttr(item.color) + '">' + escapeHtml(item.text) + '</div>';
   }).join('');
+}
+
+/* ========================================
+   품목 저장/불러오기/수정/삭제
+======================================== */
+var STORAGE_KEY_PRODUCTS = 'butcher-saved-products';
+var editingProductId = null;
+
+function initProductStorage() {
+  document.getElementById('pt-save-btn').addEventListener('click', saveCurrentProduct);
+  document.getElementById('new-product-btn').addEventListener('click', function() {
+    editingProductId = null;
+    clearForm();
+    document.getElementById('editor-title').textContent = '새 품목 만들기';
+    showEditor();
+  });
+  document.getElementById('back-to-list-btn').addEventListener('click', function() {
+    showList();
+  });
+}
+
+function getProducts() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY_PRODUCTS) || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveProducts(arr) {
+  try { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(arr)); }
+  catch(e) { alert('저장 공간이 부족합니다.'); }
+}
+
+function saveCurrentProduct() {
+  var name = document.getElementById('pt-product').value.trim();
+  if (!name) { alert('상품명을 입력해주세요.'); return; }
+
+  var data = {
+    template: document.getElementById('pt-template').value,
+    orientation: document.getElementById('pt-orientation').value,
+    category: document.getElementById('pt-category').value,
+    product: name,
+    origin: document.getElementById('pt-origin').value,
+    grade: document.getElementById('pt-grade').value,
+    price: document.getElementById('pt-price').value,
+    unit: document.getElementById('pt-unit').value,
+    originalPrice: document.getElementById('pt-original-price').value,
+    discount: document.getElementById('pt-discount').value,
+    subtitle: document.getElementById('pt-subtitle').value,
+    badge: document.getElementById('pt-badge').value,
+    size: document.getElementById('pt-size').value,
+    image: currentImages.pt || null,
+    customTexts: customTexts.slice(),
+  };
+
+  var products = getProducts();
+  if (editingProductId !== null) {
+    var idx = products.findIndex(function(p) { return p.id === editingProductId; });
+    if (idx >= 0) {
+      data.id = editingProductId;
+      products[idx] = data;
+    }
+  } else {
+    data.id = Date.now();
+    products.push(data);
+  }
+
+  saveProducts(products);
+  renderSavedProductsList();
+  alert('저장되었습니다!');
+}
+
+function loadProduct(id) {
+  var products = getProducts();
+  var p = products.find(function(item) { return item.id === id; });
+  if (!p) return;
+
+  editingProductId = p.id;
+  document.getElementById('pt-template').value = p.template || 'classic-red';
+  document.getElementById('pt-orientation').value = p.orientation || 'portrait';
+  document.getElementById('pt-category').value = p.category || 'beef';
+  document.getElementById('pt-product').value = p.product || '';
+  document.getElementById('pt-origin').value = p.origin || '';
+  document.getElementById('pt-grade').value = p.grade || '';
+  document.getElementById('pt-price').value = p.price || '';
+  document.getElementById('pt-unit').value = p.unit || '100g';
+  document.getElementById('pt-original-price').value = p.originalPrice || '';
+  document.getElementById('pt-discount').value = p.discount || '';
+  document.getElementById('pt-subtitle').value = p.subtitle || '';
+  document.getElementById('pt-badge').value = p.badge || '';
+  document.getElementById('pt-size').value = p.size || 'a4';
+
+  // 이미지
+  if (p.image && isSafeImageSrc(p.image)) {
+    currentImages.pt = p.image;
+    var preview = document.getElementById('pt-image-preview');
+    preview.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = p.image;
+    img.alt = '미리보기';
+    preview.appendChild(img);
+    document.getElementById('pt-image-remove-btn').style.display = 'inline-block';
+  } else {
+    currentImages.pt = null;
+    document.getElementById('pt-image-preview').innerHTML = '';
+    document.getElementById('pt-image-remove-btn').style.display = 'none';
+  }
+
+  // 커스텀 텍스트
+  customTexts = (p.customTexts || []).slice();
+  renderCustomTextList();
+
+  document.getElementById('editor-title').textContent = '품목 수정: ' + p.product;
+  showEditor();
+  triggerRender();
+}
+
+function deleteProduct(id) {
+  if (!confirm('이 품목을 삭제하시겠습니까?')) return;
+  var products = getProducts().filter(function(p) { return p.id !== id; });
+  saveProducts(products);
+  renderSavedProductsList();
+}
+
+function clearForm() {
+  document.getElementById('pt-template').value = 'classic-red';
+  document.getElementById('pt-orientation').value = 'portrait';
+  document.getElementById('pt-category').value = 'beef';
+  document.getElementById('pt-product').value = '';
+  document.getElementById('pt-origin').value = '';
+  document.getElementById('pt-grade').value = '';
+  document.getElementById('pt-price').value = '';
+  document.getElementById('pt-unit').value = '100g';
+  document.getElementById('pt-original-price').value = '';
+  document.getElementById('pt-discount').value = '';
+  document.getElementById('pt-subtitle').value = '';
+  document.getElementById('pt-badge').value = '';
+  document.getElementById('pt-size').value = 'a4';
+  currentImages.pt = null;
+  document.getElementById('pt-image-preview').innerHTML = '';
+  document.getElementById('pt-image-remove-btn').style.display = 'none';
+  document.getElementById('pt-image-upload').value = '';
+  customTexts = [];
+  renderCustomTextList();
+  triggerRender();
+}
+
+function showEditor() {
+  document.getElementById('editor-section').style.display = '';
+  document.getElementById('slide-section').style.display = 'none';
+}
+
+function showList() {
+  document.getElementById('editor-section').style.display = 'none';
+  document.getElementById('slide-section').style.display = 'none';
+}
+
+function renderSavedProductsList() {
+  var products = getProducts();
+  var container = document.getElementById('saved-products-list');
+  var slideBtn = document.getElementById('slide-view-btn');
+
+  if (!products.length) {
+    container.innerHTML = '<div class="no-products-msg">저장된 품목이 없습니다. "새 품목 만들기"를 눌러 시작하세요.</div>';
+    slideBtn.style.display = 'none';
+    return;
+  }
+
+  slideBtn.style.display = '';
+
+  container.innerHTML = products.map(function(p) {
+    var color = TEMPLATE_COLORS[p.template] || '#999';
+    var cat = CATEGORY_MAP[p.category] || CATEGORY_MAP.other;
+    return '<div class="saved-product-card" data-id="' + p.id + '">' +
+      '<button class="card-delete" data-id="' + p.id + '">x</button>' +
+      '<div class="card-name"><span class="card-template-dot" style="background:' + color + '"></span>' + escapeHtml(p.product || '상품명') + '</div>' +
+      '<div class="card-info">' + escapeHtml(cat.label) + ' | ' + escapeHtml(p.origin || '-') + '</div>' +
+      '<div class="card-price">' + (p.price ? formatPrice(p.price) + '원' : '-') + '</div>' +
+      '</div>';
+  }).join('');
+
+  container.querySelectorAll('.saved-product-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.classList.contains('card-delete')) return;
+      loadProduct(parseInt(card.dataset.id));
+    });
+  });
+
+  container.querySelectorAll('.card-delete').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteProduct(parseInt(btn.dataset.id));
+    });
+  });
+}
+
+/* ========================================
+   슬라이드 뷰 / 일괄 인쇄
+======================================== */
+var currentSlide = 0;
+
+function initSlideView() {
+  document.getElementById('slide-view-btn').addEventListener('click', openSlideView);
+  document.getElementById('slide-close-btn').addEventListener('click', function() {
+    document.getElementById('slide-section').style.display = 'none';
+  });
+  document.getElementById('slide-prev-btn').addEventListener('click', function() { navigateSlide(-1); });
+  document.getElementById('slide-next-btn').addEventListener('click', function() { navigateSlide(1); });
+  document.getElementById('slide-print-all-btn').addEventListener('click', printAllProducts);
+}
+
+function openSlideView() {
+  var products = getProducts();
+  if (!products.length) return;
+  currentSlide = 0;
+  document.getElementById('editor-section').style.display = 'none';
+  document.getElementById('slide-section').style.display = '';
+  renderSlide(products, 0);
+}
+
+function navigateSlide(dir) {
+  var products = getProducts();
+  if (!products.length) return;
+  currentSlide += dir;
+  if (currentSlide < 0) currentSlide = products.length - 1;
+  if (currentSlide >= products.length) currentSlide = 0;
+  renderSlide(products, currentSlide);
+}
+
+function renderSlide(products, index) {
+  var area = document.getElementById('slide-canvas-area');
+  area.innerHTML = '';
+  var p = products[index];
+  area.appendChild(buildCanvasFromData(p));
+  document.getElementById('slide-counter').textContent = (index + 1) + ' / ' + products.length;
+}
+
+function buildCanvasFromData(p) {
+  var isLandscape = p.orientation === 'landscape';
+  var cat = CATEGORY_MAP[p.category] || CATEGORY_MAP.other;
+  var hasImage = p.image && isSafeImageSrc(p.image);
+
+  var canvas = document.createElement('div');
+  canvas.className = 'price-tag-canvas ' + (p.template || 'classic-red') + (isLandscape ? ' landscape' : '');
+
+  var badgeHtml = '';
+  if (p.badge && BADGE_MAP[p.badge]) {
+    var b = BADGE_MAP[p.badge];
+    badgeHtml = '<span class="badge ' + b.cls + '">' + b.text + '</span>';
+  }
+
+  var bodyContent = '';
+  if (isLandscape && hasImage) {
+    bodyContent = '<div class="pt-image-area" style="display:block"><img src="' + escapeAttr(p.image) + '" alt="상품 이미지"></div>' +
+      '<div class="pt-body-right">' +
+        '<div class="pt-product-name">' + escapeHtml(p.product || '상품명') + '</div>' +
+        (p.origin ? '<div class="pt-origin">원산지: ' + escapeHtml(p.origin) + '</div>' : '') +
+        (p.grade ? '<div class="pt-grade-area"><span class="pt-grade">' + escapeHtml(p.grade) + '</span></div>' : '') +
+        (p.subtitle ? '<div class="pt-subtitle-area" style="display:block">' + escapeHtml(p.subtitle) + '</div>' : '') +
+      '</div>';
+  } else {
+    bodyContent = '<div class="pt-product-name">' + escapeHtml(p.product || '상품명') + '</div>' +
+      (p.origin ? '<div class="pt-origin">원산지: ' + escapeHtml(p.origin) + '</div>' : '') +
+      (p.grade ? '<div class="pt-grade-area"><span class="pt-grade">' + escapeHtml(p.grade) + '</span></div>' : '') +
+      (p.subtitle ? '<div class="pt-subtitle-area" style="display:block">' + escapeHtml(p.subtitle) + '</div>' : '') +
+      (hasImage ? '<div class="pt-image-area" style="display:block"><img src="' + escapeAttr(p.image) + '" alt="상품 이미지"></div>' : '');
+  }
+
+  var textsHtml = '';
+  if (p.customTexts && p.customTexts.length) {
+    textsHtml = '<div class="pt-custom-texts" style="display:block">' + p.customTexts.map(function(t) {
+      return '<div class="pt-custom-text-line" style="font-size:' + t.size + 'px;color:' + escapeAttr(t.color) + '">' + escapeHtml(t.text) + '</div>';
+    }).join('') + '</div>';
+  }
+
+  canvas.innerHTML = '<div class="pt-badge-area">' + badgeHtml + '</div>' +
+    '<div class="pt-header"><span class="pt-category-icon">' + cat.icon + '</span><span class="pt-category-label">' + escapeHtml(cat.label) + '</span></div>' +
+    '<div class="pt-body">' + bodyContent + textsHtml + '</div>' +
+    '<div class="pt-price-area">' +
+      (p.originalPrice ? '<div class="pt-original-price" style="display:block">' + formatPrice(p.originalPrice) + '원</div>' : '') +
+      (p.discount ? '<div class="pt-discount-badge" style="display:inline-block">' + escapeHtml(p.discount) + '</div>' : '') +
+      '<div class="pt-price"><span class="pt-price-number">' + (p.price ? formatPrice(p.price) : '0') + '</span><span class="pt-price-won">원</span></div>' +
+      '<div class="pt-unit">/ ' + escapeHtml(p.unit || '100g') + '</div>' +
+    '</div>' +
+    '<div class="pt-footer"><span>신선한 고기, 정직한 가격</span></div>';
+
+  return canvas;
+}
+
+function printAllProducts() {
+  var products = getProducts();
+  if (!products.length) return;
+
+  var area = document.getElementById('print-all-area');
+  area.innerHTML = '';
+
+  products.forEach(function(p) {
+    var page = document.createElement('div');
+    page.className = 'print-page';
+    page.appendChild(buildCanvasFromData(p));
+    area.appendChild(page);
+  });
+
+  area.classList.add('printing');
+  window.print();
+  area.classList.remove('printing');
 }
