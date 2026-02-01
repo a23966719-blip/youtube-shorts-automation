@@ -1,41 +1,26 @@
 /* ========================================
-   정육점 POP 가격표 & 광고 포스터 생성기
+   정육점 POP 가격표 생성기
    Main Application Logic
 ======================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-  initTabs();
   initPriceTag();
-  initPoster();
   initImageFeatures();
+  initZoom();
+  initCustomText();
   loadSavedImages();
 });
-
-/* ===== Tab Navigation ===== */
-function initTabs() {
-  const tabs = document.querySelectorAll('.tab-btn');
-  const contents = document.querySelectorAll('.tab-content');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      contents.forEach(c => c.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.tab).classList.add('active');
-    });
-  });
-}
 
 /* ========================================
    POP 가격표 기능
 ======================================== */
 const CATEGORY_MAP = {
-  beef: { icon: '🐂', label: '소고기' },
-  pork: { icon: '🐷', label: '돼지고기' },
-  chicken: { icon: '🐔', label: '닭고기' },
-  lamb: { icon: '🐑', label: '양고기' },
-  duck: { icon: '🦆', label: '오리고기' },
-  other: { icon: '🍖', label: '기타' },
+  beef: { icon: '', label: '소고기' },
+  pork: { icon: '', label: '돼지고기' },
+  chicken: { icon: '', label: '닭고기' },
+  lamb: { icon: '', label: '양고기' },
+  duck: { icon: '', label: '오리고기' },
+  other: { icon: '', label: '기타' },
 };
 
 const BADGE_MAP = {
@@ -55,11 +40,32 @@ function formatPrice(num) {
   return n.toLocaleString('ko-KR');
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function isSafeImageSrc(url) {
+  if (!url || typeof url !== 'string') return false;
+  return /^(data:image\/|https?:\/\/)/.test(url);
+}
+
 function initPriceTag() {
   const $ = id => document.getElementById(id);
 
   const fields = {
     template: $('pt-template'),
+    orientation: $('pt-orientation'),
     category: $('pt-category'),
     product: $('pt-product'),
     origin: $('pt-origin'),
@@ -74,27 +80,24 @@ function initPriceTag() {
   };
 
   const canvas = $('pt-canvas');
-  const previewBtn = $('pt-preview-btn');
   const downloadBtn = $('pt-download-btn');
+  const printBtn = $('pt-print-btn');
 
-  // Live update on any field change
   Object.values(fields).forEach(el => {
+    if (!el) return;
     el.addEventListener('input', () => renderPriceTag(fields, canvas));
     el.addEventListener('change', () => renderPriceTag(fields, canvas));
   });
 
-  const printBtn = $('pt-print-btn');
-
-  previewBtn.addEventListener('click', () => renderPriceTag(fields, canvas));
   downloadBtn.addEventListener('click', () => downloadCanvas('pt-canvas', 'pop-가격표'));
   printBtn.addEventListener('click', () => printCanvas('pt-canvas'));
 
-  // Initial render
   renderPriceTag(fields, canvas);
 }
 
 function renderPriceTag(fields, canvas) {
   const template = fields.template.value;
+  const orientation = fields.orientation.value;
   const cat = CATEGORY_MAP[fields.category.value] || CATEGORY_MAP.other;
   const product = fields.product.value || '상품명';
   const origin = fields.origin.value;
@@ -106,14 +109,17 @@ function renderPriceTag(fields, canvas) {
   const subtitle = fields.subtitle.value;
   const badgeKey = fields.badge.value;
 
-  // Template class
+  // Template + orientation class
   canvas.className = 'price-tag-canvas ' + template;
+  if (orientation === 'landscape') {
+    canvas.classList.add('landscape');
+  }
 
   // Badge
   const badgeArea = canvas.querySelector('.pt-badge-area');
   if (badgeKey && BADGE_MAP[badgeKey]) {
     const b = BADGE_MAP[badgeKey];
-    badgeArea.innerHTML = `<span class="badge ${b.cls}">${b.text}</span>`;
+    badgeArea.innerHTML = '<span class="badge ' + b.cls + '">' + b.text + '</span>';
   } else {
     badgeArea.innerHTML = '';
   }
@@ -127,13 +133,13 @@ function renderPriceTag(fields, canvas) {
 
   // Origin
   const originEl = canvas.querySelector('.pt-origin');
-  originEl.textContent = origin ? `원산지: ${origin}` : '';
+  originEl.textContent = origin ? '원산지: ' + origin : '';
   originEl.style.display = origin ? 'block' : 'none';
 
   // Grade
   const gradeArea = canvas.querySelector('.pt-grade-area');
   if (grade) {
-    gradeArea.innerHTML = `<span class="pt-grade">${escapeHtml(grade)}</span>`;
+    gradeArea.innerHTML = '<span class="pt-grade">' + escapeHtml(grade) + '</span>';
     gradeArea.style.display = 'block';
   } else {
     gradeArea.innerHTML = '';
@@ -150,11 +156,10 @@ function renderPriceTag(fields, canvas) {
   if (!imageArea) {
     imageArea = document.createElement('div');
     imageArea.className = 'pt-image-area';
-    const subtitleArea = canvas.querySelector('.pt-subtitle-area');
-    if (subtitleArea) {
-      subtitleArea.after(imageArea);
+    const customTexts = canvas.querySelector('.pt-custom-texts');
+    if (customTexts) {
+      customTexts.before(imageArea);
     } else {
-      // pt-subtitle-area가 DOM에 없을 경우 canvas 끝에 추가
       canvas.appendChild(imageArea);
     }
   }
@@ -168,6 +173,9 @@ function renderPriceTag(fields, canvas) {
   } else {
     imageArea.style.display = 'none';
   }
+
+  // Custom texts
+  renderCustomTextsOnCanvas();
 
   // Price area
   const originalPriceEl = canvas.querySelector('.pt-original-price');
@@ -189,161 +197,7 @@ function renderPriceTag(fields, canvas) {
   }
 
   canvas.querySelector('.pt-price-number').textContent = price ? formatPrice(price) : '0';
-  canvas.querySelector('.pt-unit').textContent = `/ ${unit}`;
-}
-
-/* ========================================
-   광고 포스터 기능
-======================================== */
-function initPoster() {
-  const $ = id => document.getElementById(id);
-
-  const fields = {
-    template: $('ps-template'),
-    shopName: $('ps-shop-name'),
-    title: $('ps-title'),
-    subtitle: $('ps-subtitle'),
-    period: $('ps-period'),
-    notice: $('ps-notice'),
-    phone: $('ps-phone'),
-    address: $('ps-address'),
-    size: $('ps-size'),
-  };
-
-  const canvas = $('ps-canvas');
-  const previewBtn = $('ps-preview-btn');
-  const downloadBtn = $('ps-download-btn');
-  const addProductBtn = $('ps-add-product');
-  const productsList = $('ps-products-list');
-
-  // Add product row
-  addProductBtn.addEventListener('click', () => {
-    const rows = productsList.querySelectorAll('.ps-product-row');
-    if (rows.length >= 5) {
-      alert('상품은 최대 5개까지 추가할 수 있습니다.');
-      return;
-    }
-    const row = document.createElement('div');
-    row.className = 'ps-product-row';
-    row.innerHTML = `
-      <input type="text" class="ps-item-name" placeholder="상품명" maxlength="12">
-      <input type="text" class="ps-item-price" placeholder="가격 (예: 35,000원)" maxlength="15">
-    `;
-    productsList.appendChild(row);
-    // 개별 input 리스너 불필요: productsList의 위임(delegate) input 리스너가
-    // 버블링을 통해 새 input 이벤트도 처리함 (아래 productsList.addEventListener 참조)
-  });
-
-  // Live update on field change
-  Object.values(fields).forEach(el => {
-    el.addEventListener('input', () => renderPoster(fields, canvas));
-    el.addEventListener('change', () => renderPoster(fields, canvas));
-  });
-
-  // Also listen on product inputs
-  productsList.addEventListener('input', () => renderPoster(fields, canvas));
-
-  const printBtn = $('ps-print-btn');
-
-  previewBtn.addEventListener('click', () => renderPoster(fields, canvas));
-  downloadBtn.addEventListener('click', () => downloadCanvas('ps-canvas', '광고포스터'));
-  printBtn.addEventListener('click', () => printCanvas('ps-canvas'));
-
-  // Initial render
-  renderPoster(fields, canvas);
-}
-
-function renderPoster(fields, canvas) {
-  const template = fields.template.value;
-  const shopName = fields.shopName.value || '매장명';
-  const title = fields.title.value || '메인 제목';
-  const subtitle = fields.subtitle.value || '';
-  const period = fields.period.value || '';
-  const notice = fields.notice.value || '';
-  const phone = fields.phone.value || '';
-  const address = fields.address.value || '';
-
-  // Gather products
-  const productRows = document.querySelectorAll('#ps-products-list .ps-product-row');
-  const products = [];
-  productRows.forEach(row => {
-    const name = row.querySelector('.ps-item-name').value;
-    const price = row.querySelector('.ps-item-price').value;
-    if (name || price) {
-      products.push({ name: name || '상품', price: price || '가격' });
-    }
-  });
-
-  // Template class
-  canvas.className = 'poster-canvas ' + template;
-
-  // Build inner HTML
-  let productsHTML = '';
-  if (products.length > 0) {
-    productsHTML = products.map(p => `
-      <div class="ps-product-item">
-        <span class="ps-product-name">${escapeHtml(p.name)}</span>
-        <span class="ps-product-dot"></span>
-        <span class="ps-product-price">${escapeHtml(p.price)}</span>
-      </div>
-    `).join('');
-  }
-
-  const heroImageHTML = (currentImages.ps && isSafeImageSrc(currentImages.ps))
-    ? `<div class="ps-hero-image"><img src="${escapeAttr(currentImages.ps)}" alt="홍보 이미지"></div>`
-    : '';
-
-  const productsSection = products.length > 0
-    ? `<div class="ps-product-list">${productsHTML}</div>`
-    : '<div class="ps-product-list ps-empty-notice" style="text-align:center;opacity:0.45;padding:18px 0;font-size:1.05em;">상품을 추가해주세요</div>';
-
-  canvas.innerHTML = `
-    <div class="ps-top-banner"><span>${escapeHtml(shopName)}</span></div>
-    <div class="ps-main-title">${escapeHtml(title)}</div>
-    ${subtitle ? `<div class="ps-sub-title">${escapeHtml(subtitle)}</div>` : ''}
-    ${period ? `<div class="ps-period">📅 ${escapeHtml(period)}</div>` : ''}
-    ${heroImageHTML}
-    ${productsSection}
-    ${notice ? `<div class="ps-notice">${escapeHtml(notice)}</div>` : ''}
-    <div class="ps-contact">
-      ${phone ? `<div class="ps-phone">📞 ${escapeHtml(phone)}</div>` : ''}
-      ${address ? `<div class="ps-address">📍 ${escapeHtml(address)}</div>` : ''}
-    </div>
-    <div class="ps-deco-top-left"></div>
-    <div class="ps-deco-top-right"></div>
-    <div class="ps-deco-bottom-left"></div>
-    <div class="ps-deco-bottom-right"></div>
-  `;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-/**
- * HTML 속성(attribute) 값에 안전하게 삽입하기 위한 이스케이프.
- * escapeHtml은 textContent 컨텍스트만 안전하고, " 를 이스케이프하지 않으므로
- * src="...", alt="..." 등 속성 값에는 이 함수를 사용해야 한다.
- */
-function escapeAttr(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-/**
- * 이미지 src로 허용할 URL 스킴을 검증한다.
- * data:image/* , http://, https:// 만 허용하여
- * javascript: 등 위험한 스킴을 차단한다.
- */
-function isSafeImageSrc(url) {
-  if (!url || typeof url !== 'string') return false;
-  return /^(data:image\/|https?:\/\/)/.test(url);
+  canvas.querySelector('.pt-unit').textContent = '/ ' + unit;
 }
 
 /* ========================================
@@ -353,21 +207,14 @@ function downloadCanvas(canvasId, filenamePrefix) {
   const el = document.getElementById(canvasId);
   if (!el) return;
 
-  // Get scale factor based on selected size
   let scale = 2;
-  const sizeSelect = canvasId === 'pt-canvas'
-    ? document.getElementById('pt-size')
-    : document.getElementById('ps-size');
-
+  const sizeSelect = document.getElementById('pt-size');
   if (sizeSelect) {
     const size = sizeSelect.value;
     if (size === 'a3' || size === 'b4') scale = 3;
   }
 
-  // Show loading state on button
-  const btn = canvasId === 'pt-canvas'
-    ? document.getElementById('pt-download-btn')
-    : document.getElementById('ps-download-btn');
+  const btn = document.getElementById('pt-download-btn');
   const originalText = btn.textContent;
   btn.textContent = '생성 중...';
   btn.disabled = true;
@@ -380,12 +227,11 @@ function downloadCanvas(canvasId, filenamePrefix) {
   }).then(canvasEl => {
     const link = document.createElement('a');
     const now = new Date();
-    const timestamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-    link.download = `${filenamePrefix}_${timestamp}.png`;
+    const timestamp = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+    link.download = filenamePrefix + '_' + timestamp + '.png';
     link.href = canvasEl.toDataURL('image/png');
     link.click();
-  }).catch(err => {
-    console.error('Download failed:', err);
+  }).catch(function() {
     alert('이미지 생성에 실패했습니다. 다시 시도해주세요.');
   }).finally(() => {
     btn.textContent = originalText;
@@ -399,23 +245,19 @@ function downloadCanvas(canvasId, filenamePrefix) {
 function printCanvas(canvasId) {
   const el = document.getElementById(canvasId);
   if (!el) return;
-
   el.classList.add('print-target');
   window.print();
   el.classList.remove('print-target');
 }
 
 /* ========================================
-   이미지 업로드 / 검색 / 자동 저장
+   이미지 업로드 / Google 검색 / 자동 저장
 ======================================== */
-const currentImages = { pt: null, ps: null };
-let activeImageTarget = null; // 'pt' or 'ps'
+const currentImages = { pt: null };
 
 const STORAGE_KEY_IMAGES = 'butcher-poster-saved-images';
-const STORAGE_KEY_API = 'butcher-poster-pixabay-key';
 
 function initImageFeatures() {
-  // -- 가격표 이미지 업로드 --
   document.getElementById('pt-image-upload').addEventListener('change', (e) => {
     handleFileUpload(e, 'pt');
   });
@@ -423,53 +265,13 @@ function initImageFeatures() {
     removeImage('pt');
   });
   document.getElementById('pt-image-search-btn').addEventListener('click', () => {
-    openSearchModal('pt');
+    openGoogleImageSearch();
   });
-
-  // -- 포스터 이미지 업로드 --
-  document.getElementById('ps-image-upload').addEventListener('change', (e) => {
-    handleFileUpload(e, 'ps');
-  });
-  document.getElementById('ps-image-remove-btn').addEventListener('click', () => {
-    removeImage('ps');
-  });
-  document.getElementById('ps-image-search-btn').addEventListener('click', () => {
-    openSearchModal('ps');
-  });
-
-  // -- 모달 --
-  document.getElementById('modal-close-btn').addEventListener('click', closeSearchModal);
-  document.getElementById('image-search-modal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeSearchModal();
-  });
-  document.getElementById('modal-search-btn').addEventListener('click', doPixabaySearch);
-  document.getElementById('modal-search-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doPixabaySearch();
-  });
-  document.getElementById('save-api-key-btn').addEventListener('click', () => {
-    const key = document.getElementById('pixabay-api-key').value.trim();
-    if (key) {
-      try {
-        localStorage.setItem(STORAGE_KEY_API, key);
-        alert('API Key가 저장되었습니다.\n\n주의: API Key는 브라우저 네트워크 요청에 노출됩니다.\n유료 키나 민감한 키가 아닌, Pixabay 전용 무료 키만 사용하세요.');
-      } catch (e) {
-        alert('API Key 저장에 실패했습니다. 브라우저 저장 공간을 확인해주세요.');
-      }
-    }
-  });
-
-  // 저장된 API Key 불러오기
-  const savedKey = localStorage.getItem(STORAGE_KEY_API);
-  if (savedKey) {
-    document.getElementById('pixabay-api-key').value = savedKey;
-  }
 }
 
-/* -- 파일 업로드 처리 -- */
 function handleFileUpload(e, target) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = (ev) => {
     const dataUrl = ev.target.result;
@@ -479,13 +281,10 @@ function handleFileUpload(e, target) {
   reader.readAsDataURL(file);
 }
 
-/* -- 이미지 설정 -- */
 function setImage(target, dataUrl) {
   if (!isSafeImageSrc(dataUrl)) return;
-
   currentImages[target] = dataUrl;
 
-  // 썸네일 미리보기 (DOM API 사용으로 XSS 방지)
   const preview = document.getElementById(target + '-image-preview');
   preview.innerHTML = '';
   const img = document.createElement('img');
@@ -493,11 +292,8 @@ function setImage(target, dataUrl) {
   img.alt = '미리보기';
   preview.appendChild(img);
 
-  // 제거 버튼 표시
   document.getElementById(target + '-image-remove-btn').style.display = 'inline-block';
-
-  // 캔버스 리렌더
-  triggerRender(target);
+  triggerRender();
 }
 
 function removeImage(target) {
@@ -506,75 +302,70 @@ function removeImage(target) {
   document.getElementById(target + '-image-remove-btn').style.display = 'none';
   document.getElementById(target + '-image-upload').value = '';
 
-  // 저장 목록에서 active 해제
-  document.querySelectorAll(`#${target}-saved-images .saved-thumb`).forEach(
-    img => img.classList.remove('active')
+  document.querySelectorAll('#' + target + '-saved-images .saved-thumb').forEach(
+    function(img) { img.classList.remove('active'); }
   );
-
-  triggerRender(target);
+  triggerRender();
 }
 
-function triggerRender(target) {
-  if (target === 'pt') {
-    document.getElementById('pt-preview-btn').click();
-  } else {
-    document.getElementById('ps-preview-btn').click();
+function triggerRender() {
+  const template = document.getElementById('pt-template');
+  if (template) {
+    template.dispatchEvent(new Event('change'));
   }
 }
 
-/* -- localStorage 자동 저장 -- */
+/* Google 이미지 검색 */
+function openGoogleImageSearch() {
+  const product = document.getElementById('pt-product').value || '정육점 고기';
+  const query = encodeURIComponent(product + ' 정육점');
+  window.open('https://www.google.com/search?tbm=isch&q=' + query, '_blank');
+}
+
+/* localStorage 자동 저장 */
 function saveImageToStorage(target, dataUrl, name) {
   let saved;
   try {
     saved = JSON.parse(localStorage.getItem(STORAGE_KEY_IMAGES) || '{}');
   } catch (e) {
-    // 저장 데이터가 손상된 경우 초기화
-    console.warn('저장된 이미지 데이터 파싱 실패, 초기화합니다:', e.message);
     saved = {};
   }
   if (!saved[target]) saved[target] = [];
 
-  // 같은 이름이면 덮어쓰기, 최대 10개
-  const idx = saved[target].findIndex(item => item.name === name);
+  const idx = saved[target].findIndex(function(item) { return item.name === name; });
   if (idx >= 0) {
     saved[target][idx].data = dataUrl;
   } else {
-    saved[target].unshift({ name, data: dataUrl });
+    saved[target].unshift({ name: name, data: dataUrl });
     if (saved[target].length > 10) saved[target].pop();
   }
 
   try {
     localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(saved));
   } catch (e) {
-    console.warn('localStorage 저장 실패:', e.message);
-    // localStorage 용량 초과 시 오래된 항목 제거 후 재시도
     if (saved[target].length > 3) {
       saved[target] = saved[target].slice(0, 3);
       try {
         localStorage.setItem(STORAGE_KEY_IMAGES, JSON.stringify(saved));
       } catch (_) {
-        alert('저장 공간이 부족합니다. 불필요한 이미지를 삭제하거나 브라우저 저장 공간을 정리해주세요.');
+        alert('저장 공간이 부족합니다.');
       }
-    } else {
-      alert('저장 공간이 부족합니다. 브라우저 저장 공간을 정리해주세요.');
     }
   }
-
   renderSavedImages(target);
 }
 
 function loadSavedImages() {
   renderSavedImages('pt');
-  renderSavedImages('ps');
 }
 
 function renderSavedImages(target) {
   const container = document.getElementById(target + '-saved-images');
+  if (!container) return;
   let saved;
   try {
     saved = JSON.parse(localStorage.getItem(STORAGE_KEY_IMAGES) || '{}');
   } catch (e) {
-    console.warn('저장된 이미지 데이터 파싱 실패:', e.message);
     saved = {};
   }
   const items = saved[target] || [];
@@ -584,112 +375,118 @@ function renderSavedImages(target) {
     return;
   }
 
-  container.innerHTML = items.map((item, i) => {
+  container.innerHTML = items.map(function(item, i) {
     if (!isSafeImageSrc(item.data)) return '';
-    return `<img class="saved-thumb" src="${escapeAttr(item.data)}" alt="${escapeAttr(item.name)}" title="${escapeAttr(item.name)}" data-index="${i}">`;
+    return '<img class="saved-thumb" src="' + escapeAttr(item.data) + '" alt="' + escapeAttr(item.name) + '" title="' + escapeAttr(item.name) + '" data-index="' + i + '">';
   }).join('');
 
-  container.querySelectorAll('.saved-thumb').forEach(img => {
-    img.addEventListener('click', () => {
-      const index = parseInt(img.dataset.index);
-      const data = items[index].data;
+  container.querySelectorAll('.saved-thumb').forEach(function(img) {
+    img.addEventListener('click', function() {
+      var index = parseInt(img.dataset.index);
+      var data = items[index].data;
       setImage(target, data);
-
-      // active 표시
-      container.querySelectorAll('.saved-thumb').forEach(t => t.classList.remove('active'));
+      container.querySelectorAll('.saved-thumb').forEach(function(t) { t.classList.remove('active'); });
       img.classList.add('active');
     });
   });
 }
 
-/* -- Pixabay 무료 이미지 검색 -- */
-function openSearchModal(target) {
-  activeImageTarget = target;
-  document.getElementById('image-search-modal').style.display = 'flex';
-  document.getElementById('modal-search-input').focus();
-  document.getElementById('modal-search-results').innerHTML = '';
-  document.getElementById('modal-search-status').textContent = '';
+/* ========================================
+   확대/축소 기능
+======================================== */
+let currentZoom = 100;
+
+function initZoom() {
+  document.getElementById('zoom-in-btn').addEventListener('click', function() {
+    setZoom(currentZoom + 20);
+  });
+  document.getElementById('zoom-out-btn').addEventListener('click', function() {
+    setZoom(currentZoom - 20);
+  });
+  document.getElementById('zoom-reset-btn').addEventListener('click', function() {
+    setZoom(100);
+  });
 }
 
-function closeSearchModal() {
-  document.getElementById('image-search-modal').style.display = 'none';
-  activeImageTarget = null;
+function setZoom(level) {
+  if (level < 40) level = 40;
+  if (level > 200) level = 200;
+  currentZoom = level;
+
+  var canvas = document.getElementById('pt-canvas');
+  canvas.style.transform = 'scale(' + (level / 100) + ')';
+  canvas.style.transformOrigin = 'top center';
+
+  document.getElementById('zoom-level').textContent = level + '%';
 }
 
-function doPixabaySearch() {
-  const query = document.getElementById('modal-search-input').value.trim();
-  const apiKey = document.getElementById('pixabay-api-key').value.trim();
+/* ========================================
+   텍스트 추가 기능
+======================================== */
+var customTexts = [];
 
-  if (!apiKey) {
-    alert('Pixabay API Key를 입력해주세요.\nhttps://pixabay.com/api/docs/ 에서 무료로 발급 가능합니다.');
+function initCustomText() {
+  document.getElementById('pt-add-text-btn').addEventListener('click', addCustomText);
+  document.getElementById('pt-custom-text').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addCustomText();
+  });
+}
+
+function addCustomText() {
+  var input = document.getElementById('pt-custom-text');
+  var text = input.value.trim();
+  if (!text) return;
+
+  var size = document.getElementById('pt-text-size').value;
+  var color = document.getElementById('pt-text-color').value;
+
+  customTexts.push({ text: text, size: size, color: color });
+  input.value = '';
+
+  renderCustomTextList();
+  renderCustomTextsOnCanvas();
+}
+
+function removeCustomText(index) {
+  customTexts.splice(index, 1);
+  renderCustomTextList();
+  renderCustomTextsOnCanvas();
+}
+
+function renderCustomTextList() {
+  var container = document.getElementById('pt-text-list');
+  if (customTexts.length === 0) {
+    container.innerHTML = '';
     return;
   }
-  if (!query) {
-    alert('검색어를 입력해주세요.');
-    return;
-  }
 
-  const statusEl = document.getElementById('modal-search-status');
-  const resultsEl = document.getElementById('modal-search-results');
-  statusEl.textContent = '검색 중...';
-  resultsEl.innerHTML = '';
+  container.innerHTML = customTexts.map(function(item, i) {
+    return '<div class="custom-text-item">' +
+      '<span class="text-color-dot" style="background:' + escapeAttr(item.color) + '"></span>' +
+      '<span class="text-preview">' + escapeHtml(item.text) + ' (' + item.size + 'px)</span>' +
+      '<button class="btn-remove-text" data-index="' + i + '">x</button>' +
+      '</div>';
+  }).join('');
 
-  // [보안 안내] API Key가 URL 쿼리 파라미터로 전송되므로 브라우저 네트워크 탭에서 노출됩니다.
-  // Pixabay 무료 API의 공식 사용 방식이며, 클라이언트 전용 무료 키만 사용해야 합니다.
-  // 민감한 키를 사용해야 할 경우 반드시 백엔드 프록시를 거치도록 구성하세요.
-  const url = `https://pixabay.com/api/?key=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(query)}&image_type=photo&per_page=20&safesearch=true&lang=ko`;
-
-  fetch(url)
-    .then(res => {
-      if (!res.ok) throw new Error('API 요청 실패 (키를 확인해주세요)');
-      return res.json();
-    })
-    .then(data => {
-      if (!data.hits || data.hits.length === 0) {
-        statusEl.textContent = '검색 결과가 없습니다. 다른 검색어를 시도해보세요.';
-        return;
-      }
-      statusEl.textContent = `${data.totalHits}개 결과 중 ${data.hits.length}개 표시 (클릭하여 선택)`;
-      resultsEl.innerHTML = data.hits.map(hit => `
-        <div class="search-result-item" data-url="${escapeAttr(hit.webformatURL)}">
-          <img src="${escapeAttr(hit.previewURL)}" alt="${escapeAttr(hit.tags)}" loading="lazy">
-        </div>
-      `).join('');
-
-      resultsEl.querySelectorAll('.search-result-item').forEach(item => {
-        item.addEventListener('click', () => {
-          const imageUrl = item.dataset.url;
-          statusEl.textContent = '이미지 불러오는 중...';
-
-          // 외부 이미지를 base64로 변환하여 저장
-          fetchImageAsDataUrl(imageUrl).then(dataUrl => {
-            if (activeImageTarget) {
-              setImage(activeImageTarget, dataUrl);
-              saveImageToStorage(activeImageTarget, dataUrl, 'pixabay_' + Date.now());
-            }
-            closeSearchModal();
-          }).catch(() => {
-            // CORS 실패 시 URL 직접 사용
-            if (activeImageTarget) {
-              setImage(activeImageTarget, imageUrl);
-            }
-            closeSearchModal();
-          });
-        });
-      });
-    })
-    .catch(err => {
-      statusEl.textContent = '오류: ' + err.message;
+  container.querySelectorAll('.btn-remove-text').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      removeCustomText(parseInt(btn.dataset.index));
     });
+  });
 }
 
-function fetchImageAsDataUrl(url) {
-  return fetch(url)
-    .then(res => res.blob())
-    .then(blob => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    }));
+function renderCustomTextsOnCanvas() {
+  var area = document.querySelector('.pt-custom-texts');
+  if (!area) return;
+
+  if (customTexts.length === 0) {
+    area.innerHTML = '';
+    area.style.display = 'none';
+    return;
+  }
+
+  area.style.display = 'block';
+  area.innerHTML = customTexts.map(function(item) {
+    return '<div class="pt-custom-text-line" style="font-size:' + item.size + 'px;color:' + escapeAttr(item.color) + '">' + escapeHtml(item.text) + '</div>';
+  }).join('');
 }
