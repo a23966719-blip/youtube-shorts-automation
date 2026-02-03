@@ -44,6 +44,11 @@
               <option value="fresh-green">신선 그린</option>
               <option value="sale-yellow">세일 옐로우</option>
               <option value="modern-blue">모던 블루</option>
+              <option value="market-korean">전통시장</option>
+              <option value="hanwoo-premium">한우명가</option>
+              <option value="butcher-craft">정육장인</option>
+              <option value="mega-sale">초특가</option>
+              <option value="clean-minimal">깔끔 심플</option>
             </select>
           </div>
 
@@ -52,6 +57,22 @@
             <select id="pt-orientation">
               <option value="portrait">세로 (기본)</option>
               <option value="landscape">가로</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-font">글씨체</label>
+            <select id="pt-font">
+              <option value="">기본 (Noto Sans)</option>
+              <option value="black-han-sans">블랙한산스 (굵은 고딕)</option>
+              <option value="do-hyeon">도현체</option>
+              <option value="jua">주아체</option>
+              <option value="bagel-fat-one">배이글 팻 원</option>
+              <option value="gasoek-one">가속체 (초굵은)</option>
+              <option value="yeon-sung">연성체 (붓글씨)</option>
+              <option value="dongle">동글체</option>
+              <option value="gugi">구기체</option>
+              <option value="nanum-pen">나눔펜스크립트</option>
             </select>
           </div>
 
@@ -108,8 +129,8 @@
               <input type="number" id="pt-original-price" placeholder="할인 전 가격" min="0">
             </div>
             <div class="form-group flex-1">
-              <label for="pt-discount">할인율 표시</label>
-              <input type="text" id="pt-discount" placeholder="예: 30%" maxlength="10">
+              <label for="pt-discount">할인율 (%)</label>
+              <input type="number" id="pt-discount" placeholder="예: 30" min="0" max="99">
             </div>
           </div>
 
