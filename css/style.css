@@ -3,7 +3,7 @@
    Global Styles
 ======================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&family=Do+Hyeon&family=Jua&family=Bagel+Fat+One&family=Gasoek+One&family=Yeon+Sung&family=Dongle:wght@400;700&family=Gugi&family=Nanum+Pen+Script&display=swap');
 
 :root {
   --primary: #d32f2f;
@@ -452,6 +452,202 @@ body {
 .modern-blue .pt-footer {
   background: #0d47a1; width: 100%; text-align: center;
   padding: 10px; color: #fff; font-size: 0.85rem; letter-spacing: 2px;
+}
+
+/* === 전통시장 === */
+.price-tag-canvas.market-korean { background: #FFF3E0; border: 6px dashed #795548; }
+.market-korean .pt-header {
+  background: #795548; color: #fff; width: 100%; text-align: center;
+  padding: 18px 10px 14px; font-weight: 700;
+}
+.market-korean .pt-category-icon { font-size: 1.8rem; margin-right: 8px; }
+.market-korean .pt-category-label { font-size: 1.2rem; vertical-align: middle; }
+.market-korean .pt-product-name {
+  font-family: 'Black Han Sans', sans-serif; font-size: 2.6rem; color: #3E2723;
+  margin-top: 20px; text-align: center; padding: 0 16px; line-height: 1.2;
+}
+.market-korean .pt-origin { font-size: 1rem; color: #5D4037; margin-top: 8px; text-align: center; }
+.market-korean .pt-grade-area { margin-top: 12px; text-align: center; }
+.market-korean .pt-grade {
+  display: inline-block; background: #FF8F00; color: #fff;
+  font-weight: 900; font-size: 1.3rem; padding: 6px 22px; border-radius: 20px;
+}
+.market-korean .pt-subtitle-area {
+  margin-top: 12px; font-family: 'Do Hyeon', sans-serif;
+  font-size: 1.4rem; color: #BF360C; text-align: center;
+}
+.market-korean .pt-price-area {
+  margin-top: auto; background: #D84315; width: 100%;
+  padding: 22px 16px 18px; text-align: center; color: #fff;
+}
+.market-korean .pt-original-price { font-size: 1.1rem; text-decoration: line-through; opacity: 0.75; }
+.market-korean .pt-discount-badge {
+  display: inline-block; background: #FFF176; color: #D84315;
+  font-weight: 900; font-size: 1.1rem; padding: 3px 14px; border-radius: 12px; margin-bottom: 6px;
+}
+.market-korean .pt-price-number { font-family: 'Black Han Sans', sans-serif; font-size: 4rem; line-height: 1; }
+.market-korean .pt-price-won { font-size: 1.8rem; font-weight: 700; margin-left: 4px; }
+.market-korean .pt-unit { font-size: 1.1rem; opacity: 0.85; margin-top: 2px; }
+.market-korean .pt-footer {
+  background: #4E342E; width: 100%; text-align: center;
+  padding: 10px; color: #FFAB91; font-size: 0.85rem; letter-spacing: 2px;
+}
+
+/* === 한우명가 === */
+.price-tag-canvas.hanwoo-premium { background: #1a0a0a; border: 3px solid #C9A94E; outline: 3px solid #C9A94E; outline-offset: 4px; }
+.hanwoo-premium .pt-header {
+  background: linear-gradient(135deg, #8D6E63, #C9A94E, #8D6E63); color: #fff;
+  width: 100%; text-align: center; padding: 18px 10px 14px; font-weight: 700;
+}
+.hanwoo-premium .pt-category-icon { font-size: 1.8rem; margin-right: 8px; }
+.hanwoo-premium .pt-category-label { font-size: 1.2rem; vertical-align: middle; }
+.hanwoo-premium .pt-product-name {
+  font-family: 'Black Han Sans', sans-serif; font-size: 2.6rem; color: #E8D48B;
+  margin-top: 20px; text-align: center; padding: 0 16px; line-height: 1.2;
+}
+.hanwoo-premium .pt-origin { font-size: 1rem; color: #BCAAA4; margin-top: 8px; text-align: center; }
+.hanwoo-premium .pt-grade-area { margin-top: 12px; text-align: center; }
+.hanwoo-premium .pt-grade {
+  display: inline-block; background: linear-gradient(135deg, #C9A94E, #E8D48B); color: #1a0a0a;
+  font-weight: 900; font-size: 1.3rem; padding: 6px 22px; border-radius: 20px;
+}
+.hanwoo-premium .pt-subtitle-area {
+  margin-top: 12px; font-family: 'Do Hyeon', sans-serif;
+  font-size: 1.4rem; color: #C9A94E; text-align: center;
+}
+.hanwoo-premium .pt-price-area {
+  margin-top: auto; background: linear-gradient(135deg, #6D1A1A, #8B1A1A); width: 100%;
+  padding: 22px 16px 18px; text-align: center; color: #E8D48B;
+  border-top: 2px solid #C9A94E;
+}
+.hanwoo-premium .pt-original-price { font-size: 1.1rem; text-decoration: line-through; opacity: 0.6; color: #BCAAA4; }
+.hanwoo-premium .pt-discount-badge {
+  display: inline-block; background: #C9A94E; color: #1a0a0a;
+  font-weight: 900; font-size: 1.1rem; padding: 3px 14px; border-radius: 12px; margin-bottom: 6px;
+}
+.hanwoo-premium .pt-price-number { font-family: 'Black Han Sans', sans-serif; font-size: 4rem; line-height: 1; color: #fff; }
+.hanwoo-premium .pt-price-won { font-size: 1.8rem; font-weight: 700; margin-left: 4px; color: #E8D48B; }
+.hanwoo-premium .pt-unit { font-size: 1.1rem; opacity: 0.7; margin-top: 2px; }
+.hanwoo-premium .pt-footer {
+  background: #C9A94E; width: 100%; text-align: center;
+  padding: 10px; color: #1a0a0a; font-size: 0.85rem; letter-spacing: 2px; font-weight: 700;
+}
+
+/* === 정육장인 === */
+.price-tag-canvas.butcher-craft { background: #FFFDF5; border: 8px solid #4E342E; }
+.butcher-craft .pt-header {
+  background: #4E342E; color: #FFCC80; width: 100%; text-align: center;
+  padding: 18px 10px 14px; font-weight: 700; letter-spacing: 3px;
+}
+.butcher-craft .pt-category-icon { font-size: 1.8rem; margin-right: 8px; }
+.butcher-craft .pt-category-label { font-size: 1.2rem; vertical-align: middle; }
+.butcher-craft .pt-product-name {
+  font-family: 'Black Han Sans', sans-serif; font-size: 2.6rem; color: #3E2723;
+  margin-top: 20px; text-align: center; padding: 0 16px; line-height: 1.2;
+}
+.butcher-craft .pt-origin { font-size: 1rem; color: #6D4C41; margin-top: 8px; text-align: center; }
+.butcher-craft .pt-grade-area { margin-top: 12px; text-align: center; }
+.butcher-craft .pt-grade {
+  display: inline-block; background: #8D6E63; color: #fff;
+  font-weight: 900; font-size: 1.3rem; padding: 6px 22px; border-radius: 20px;
+}
+.butcher-craft .pt-subtitle-area {
+  margin-top: 12px; font-family: 'Do Hyeon', sans-serif;
+  font-size: 1.4rem; color: #4E342E; text-align: center;
+}
+.butcher-craft .pt-price-area {
+  margin-top: auto; background: #4E342E; width: 100%;
+  padding: 22px 16px 18px; text-align: center; color: #fff;
+}
+.butcher-craft .pt-original-price { font-size: 1.1rem; text-decoration: line-through; opacity: 0.6; }
+.butcher-craft .pt-discount-badge {
+  display: inline-block; background: #FFCC80; color: #3E2723;
+  font-weight: 900; font-size: 1.1rem; padding: 3px 14px; border-radius: 12px; margin-bottom: 6px;
+}
+.butcher-craft .pt-price-number { font-family: 'Black Han Sans', sans-serif; font-size: 4rem; line-height: 1; color: #FFCC80; }
+.butcher-craft .pt-price-won { font-size: 1.8rem; font-weight: 700; margin-left: 4px; color: #FFCC80; }
+.butcher-craft .pt-unit { font-size: 1.1rem; opacity: 0.85; margin-top: 2px; }
+.butcher-craft .pt-footer {
+  background: #3E2723; width: 100%; text-align: center;
+  padding: 10px; color: #BCAAA4; font-size: 0.85rem; letter-spacing: 2px;
+}
+
+/* === 초특가 === */
+.price-tag-canvas.mega-sale { background: #FFF176; border: 10px solid #FF1744; }
+.mega-sale .pt-header {
+  background: #FF1744; color: #fff; width: 100%; text-align: center;
+  padding: 18px 10px 14px; font-weight: 900; font-size: 1.2rem;
+}
+.mega-sale .pt-category-icon { font-size: 1.8rem; margin-right: 8px; }
+.mega-sale .pt-category-label { font-size: 1.2rem; vertical-align: middle; }
+.mega-sale .pt-product-name {
+  font-family: 'Black Han Sans', sans-serif; font-size: 2.8rem; color: #D50000;
+  margin-top: 20px; text-align: center; padding: 0 16px; line-height: 1.2;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+}
+.mega-sale .pt-origin { font-size: 1rem; color: #BF360C; margin-top: 8px; text-align: center; }
+.mega-sale .pt-grade-area { margin-top: 12px; text-align: center; }
+.mega-sale .pt-grade {
+  display: inline-block; background: #FF1744; color: #fff;
+  font-weight: 900; font-size: 1.3rem; padding: 6px 22px; border-radius: 20px;
+}
+.mega-sale .pt-subtitle-area {
+  margin-top: 12px; font-family: 'Do Hyeon', sans-serif;
+  font-size: 1.6rem; color: #D50000; text-align: center; font-weight: 900;
+}
+.mega-sale .pt-price-area {
+  margin-top: auto; background: #FF1744; width: 100%;
+  padding: 22px 16px 18px; text-align: center; color: #FFF176;
+}
+.mega-sale .pt-original-price { font-size: 1.2rem; text-decoration: line-through; color: #fff; opacity: 0.8; }
+.mega-sale .pt-discount-badge {
+  display: inline-block; background: #FFF176; color: #D50000;
+  font-weight: 900; font-size: 1.3rem; padding: 4px 18px; border-radius: 12px; margin-bottom: 6px;
+}
+.mega-sale .pt-price-number { font-family: 'Black Han Sans', sans-serif; font-size: 4.5rem; line-height: 1; }
+.mega-sale .pt-price-won { font-size: 2rem; font-weight: 900; margin-left: 4px; }
+.mega-sale .pt-unit { font-size: 1.1rem; opacity: 0.9; margin-top: 2px; color: #fff; }
+.mega-sale .pt-footer {
+  background: #B71C1C; width: 100%; text-align: center;
+  padding: 10px; color: #FFF176; font-size: 0.9rem; letter-spacing: 2px; font-weight: 700;
+}
+
+/* === 깔끔 심플 === */
+.price-tag-canvas.clean-minimal { background: #fff; border: 2px solid #ECEFF1; }
+.clean-minimal .pt-header {
+  background: #ECEFF1; color: #37474F; width: 100%; text-align: center;
+  padding: 18px 10px 14px; font-weight: 500;
+}
+.clean-minimal .pt-category-icon { font-size: 1.8rem; margin-right: 8px; }
+.clean-minimal .pt-category-label { font-size: 1.2rem; vertical-align: middle; }
+.clean-minimal .pt-product-name {
+  font-family: 'Noto Sans KR', sans-serif; font-size: 2.4rem; color: #263238; font-weight: 900;
+  margin-top: 20px; text-align: center; padding: 0 16px; line-height: 1.2;
+}
+.clean-minimal .pt-origin { font-size: 1rem; color: #78909C; margin-top: 8px; text-align: center; }
+.clean-minimal .pt-grade-area { margin-top: 12px; text-align: center; }
+.clean-minimal .pt-grade {
+  display: inline-block; background: #37474F; color: #fff;
+  font-weight: 900; font-size: 1.1rem; padding: 6px 22px; border-radius: 4px;
+}
+.clean-minimal .pt-subtitle-area {
+  margin-top: 12px; font-size: 1.2rem; color: #546E7A; text-align: center; font-weight: 500;
+}
+.clean-minimal .pt-price-area {
+  margin-top: auto; background: #37474F; width: 100%;
+  padding: 22px 16px 18px; text-align: center; color: #fff;
+}
+.clean-minimal .pt-original-price { font-size: 1.1rem; text-decoration: line-through; opacity: 0.6; }
+.clean-minimal .pt-discount-badge {
+  display: inline-block; background: #FF5252; color: #fff;
+  font-weight: 900; font-size: 1.1rem; padding: 3px 14px; border-radius: 4px; margin-bottom: 6px;
+}
+.clean-minimal .pt-price-number { font-family: 'Noto Sans KR', sans-serif; font-size: 3.8rem; line-height: 1; font-weight: 900; }
+.clean-minimal .pt-price-won { font-size: 1.8rem; font-weight: 700; margin-left: 4px; }
+.clean-minimal .pt-unit { font-size: 1.1rem; opacity: 0.85; margin-top: 2px; }
+.clean-minimal .pt-footer {
+  background: #263238; width: 100%; text-align: center;
+  padding: 10px; color: #90A4AE; font-size: 0.85rem; letter-spacing: 2px;
 }
 
 /* === Badge Styles === */

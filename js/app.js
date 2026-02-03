@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initCustomText();
   initProductStorage();
   initSlideView();
+  initAutoCalc();
   renderSavedProductsList();
 });
 
@@ -41,6 +42,24 @@ var TEMPLATE_COLORS = {
   'fresh-green': '#388e3c',
   'sale-yellow': '#f57f17',
   'modern-blue': '#1565c0',
+  'market-korean': '#795548',
+  'hanwoo-premium': '#6d1a1a',
+  'butcher-craft': '#4E342E',
+  'mega-sale': '#FF1744',
+  'clean-minimal': '#37474F',
+};
+
+var FONT_MAP = {
+  '': "'Noto Sans KR', sans-serif",
+  'black-han-sans': "'Black Han Sans', sans-serif",
+  'do-hyeon': "'Do Hyeon', sans-serif",
+  'jua': "'Jua', sans-serif",
+  'bagel-fat-one': "'Bagel Fat One', system-ui",
+  'gasoek-one': "'Gasoek One', system-ui",
+  'yeon-sung': "'Yeon Sung', system-ui",
+  'dongle': "'Dongle', sans-serif",
+  'gugi': "'Gugi', system-ui",
+  'nanum-pen': "'Nanum Pen Script', cursive",
 };
 
 function formatPrice(num) {
@@ -67,6 +86,27 @@ function isSafeImageSrc(url) {
 }
 
 /* ========================================
+   자동 판매가 계산
+======================================== */
+function initAutoCalc() {
+  var origEl = document.getElementById('pt-original-price');
+  var discEl = document.getElementById('pt-discount');
+  if (origEl) origEl.addEventListener('input', autoCalcPrice);
+  if (discEl) discEl.addEventListener('input', autoCalcPrice);
+}
+
+function autoCalcPrice() {
+  var originalPrice = parseFloat(document.getElementById('pt-original-price').value);
+  var discount = parseFloat(document.getElementById('pt-discount').value);
+
+  if (!isNaN(originalPrice) && originalPrice > 0 && !isNaN(discount) && discount > 0 && discount <= 99) {
+    var salePrice = Math.round(originalPrice * (1 - discount / 100));
+    document.getElementById('pt-price').value = salePrice;
+    triggerRender();
+  }
+}
+
+/* ========================================
    POP 가격표 기능
 ======================================== */
 var ptFields = null;
@@ -78,6 +118,7 @@ function initPriceTag() {
   ptFields = {
     template: $('pt-template'),
     orientation: $('pt-orientation'),
+    font: $('pt-font'),
     category: $('pt-category'),
     product: $('pt-product'),
     origin: $('pt-origin'),
@@ -108,6 +149,7 @@ function initPriceTag() {
 function renderPriceTag(fields, canvas) {
   var template = fields.template.value;
   var orientation = fields.orientation.value;
+  var fontKey = fields.font ? fields.font.value : '';
   var cat = CATEGORY_MAP[fields.category.value] || CATEGORY_MAP.other;
   var product = fields.product.value || '상품명';
   var origin = fields.origin.value;
@@ -140,13 +182,11 @@ function renderPriceTag(fields, canvas) {
   var hasImage = currentImages.pt && isSafeImageSrc(currentImages.pt);
 
   if (isLandscape && hasImage) {
-    // 가로: 이미지(왼쪽) + 정보(오른쪽)
     var rightDiv = body.querySelector('.pt-body-right');
     if (!rightDiv) {
       rightDiv = document.createElement('div');
       rightDiv.className = 'pt-body-right';
     }
-    // 이미지 영역
     imageArea.innerHTML = '';
     imageArea.style.display = 'block';
     var img = document.createElement('img');
@@ -154,7 +194,6 @@ function renderPriceTag(fields, canvas) {
     img.alt = '상품 이미지';
     imageArea.appendChild(img);
 
-    // 오른쪽에 상품 정보
     rightDiv.innerHTML = '';
     var nameDiv = document.createElement('div');
     nameDiv.className = 'pt-product-name';
@@ -181,7 +220,6 @@ function renderPriceTag(fields, canvas) {
       rightDiv.appendChild(subDiv);
     }
 
-    // 기존 직접 자식 요소 숨김
     var directName = body.querySelector(':scope > .pt-product-name');
     var directOrigin = body.querySelector(':scope > .pt-origin');
     var directGrade = body.querySelector(':scope > .pt-grade-area');
@@ -195,7 +233,6 @@ function renderPriceTag(fields, canvas) {
       body.appendChild(rightDiv);
     }
   } else {
-    // 세로 모드 또는 이미지 없음
     var existingRight = body.querySelector('.pt-body-right');
     if (existingRight) existingRight.remove();
 
@@ -237,6 +274,9 @@ function renderPriceTag(fields, canvas) {
 
   renderCustomTextsOnCanvas();
 
+  // 글씨체 적용
+  applyFontToCanvas(canvas, fontKey);
+
   // Price
   var originalPriceEl = canvas.querySelector('.pt-original-price');
   if (originalPrice) {
@@ -247,9 +287,11 @@ function renderPriceTag(fields, canvas) {
     originalPriceEl.style.display = 'none';
   }
 
+  // 할인율 표시 (숫자 → XX% 형식)
   var discountBadge = canvas.querySelector('.pt-discount-badge');
-  if (discount) {
-    discountBadge.textContent = discount;
+  var discountNum = parseFloat(discount);
+  if (!isNaN(discountNum) && discountNum > 0) {
+    discountBadge.textContent = discountNum + '%';
     discountBadge.style.display = 'inline-block';
   } else {
     discountBadge.textContent = '';
@@ -258,6 +300,23 @@ function renderPriceTag(fields, canvas) {
 
   canvas.querySelector('.pt-price-number').textContent = price ? formatPrice(price) : '0';
   canvas.querySelector('.pt-unit').textContent = '/ ' + unit;
+}
+
+/* ========================================
+   글씨체 적용
+======================================== */
+function applyFontToCanvas(canvas, fontKey) {
+  var fontFamily = FONT_MAP[fontKey] || '';
+  var elements = canvas.querySelectorAll('.pt-product-name, .pt-price-number, .pt-subtitle-area, .pt-custom-text-line');
+  if (fontKey) {
+    elements.forEach(function(el) {
+      el.style.fontFamily = fontFamily;
+    });
+  } else {
+    elements.forEach(function(el) {
+      el.style.fontFamily = '';
+    });
+  }
 }
 
 /* ========================================
@@ -451,6 +510,7 @@ function saveCurrentProduct() {
   var data = {
     template: document.getElementById('pt-template').value,
     orientation: document.getElementById('pt-orientation').value,
+    font: document.getElementById('pt-font').value,
     category: document.getElementById('pt-category').value,
     product: name,
     origin: document.getElementById('pt-origin').value,
@@ -491,6 +551,7 @@ function loadProduct(id) {
   editingProductId = p.id;
   document.getElementById('pt-template').value = p.template || 'classic-red';
   document.getElementById('pt-orientation').value = p.orientation || 'portrait';
+  document.getElementById('pt-font').value = p.font || '';
   document.getElementById('pt-category').value = p.category || 'beef';
   document.getElementById('pt-product').value = p.product || '';
   document.getElementById('pt-origin').value = p.origin || '';
@@ -503,7 +564,6 @@ function loadProduct(id) {
   document.getElementById('pt-badge').value = p.badge || '';
   document.getElementById('pt-size').value = p.size || 'a4';
 
-  // 이미지
   if (p.image && isSafeImageSrc(p.image)) {
     currentImages.pt = p.image;
     var preview = document.getElementById('pt-image-preview');
@@ -519,7 +579,6 @@ function loadProduct(id) {
     document.getElementById('pt-image-remove-btn').style.display = 'none';
   }
 
-  // 커스텀 텍스트
   customTexts = (p.customTexts || []).slice();
   renderCustomTextList();
 
@@ -538,6 +597,7 @@ function deleteProduct(id) {
 function clearForm() {
   document.getElementById('pt-template').value = 'classic-red';
   document.getElementById('pt-orientation').value = 'portrait';
+  document.getElementById('pt-font').value = '';
   document.getElementById('pt-category').value = 'beef';
   document.getElementById('pt-product').value = '';
   document.getElementById('pt-origin').value = '';
@@ -650,6 +710,7 @@ function renderSlide(products, index) {
 
 function buildCanvasFromData(p) {
   var isLandscape = p.orientation === 'landscape';
+  var fontKey = p.font || '';
   var cat = CATEGORY_MAP[p.category] || CATEGORY_MAP.other;
   var hasImage = p.image && isSafeImageSrc(p.image);
 
@@ -686,16 +747,23 @@ function buildCanvasFromData(p) {
     }).join('') + '</div>';
   }
 
+  // 할인율 표시 (숫자 → XX%)
+  var discountNum = parseFloat(p.discount);
+  var discountDisplay = (!isNaN(discountNum) && discountNum > 0) ? discountNum + '%' : '';
+
   canvas.innerHTML = '<div class="pt-badge-area">' + badgeHtml + '</div>' +
     '<div class="pt-header"><span class="pt-category-icon">' + cat.icon + '</span><span class="pt-category-label">' + escapeHtml(cat.label) + '</span></div>' +
     '<div class="pt-body">' + bodyContent + textsHtml + '</div>' +
     '<div class="pt-price-area">' +
       (p.originalPrice ? '<div class="pt-original-price" style="display:block">' + formatPrice(p.originalPrice) + '원</div>' : '') +
-      (p.discount ? '<div class="pt-discount-badge" style="display:inline-block">' + escapeHtml(p.discount) + '</div>' : '') +
+      (discountDisplay ? '<div class="pt-discount-badge" style="display:inline-block">' + escapeHtml(discountDisplay) + '</div>' : '') +
       '<div class="pt-price"><span class="pt-price-number">' + (p.price ? formatPrice(p.price) : '0') + '</span><span class="pt-price-won">원</span></div>' +
       '<div class="pt-unit">/ ' + escapeHtml(p.unit || '100g') + '</div>' +
     '</div>' +
     '<div class="pt-footer"><span>신선한 고기, 정직한 가격</span></div>';
+
+  // 글씨체 적용
+  applyFontToCanvas(canvas, fontKey);
 
   return canvas;
 }
