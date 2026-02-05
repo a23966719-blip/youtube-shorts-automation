@@ -940,39 +940,91 @@ body {
 
 /* ===== 인쇄 전용 스타일 ===== */
 @media print {
+  @page { margin: 5mm; }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-  body { background: #fff !important; }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   body * { visibility: hidden; }
 
-  /* 단일 인쇄 */
+  /* 단일 인쇄 - 용지 꽉 채움 */
   .print-target, .print-target * { visibility: visible; }
   .print-target {
-    position: absolute; left: 0; top: 0; width: 100%;
-    box-shadow: none !important; border: none !important; margin: 0 !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
   }
+
   .price-tag-canvas.print-target {
-    width: 100%; max-width: 100%; min-height: auto;
-    page-break-inside: avoid; break-inside: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
+
+  /* 인쇄용 텍스트 크기 확대 */
+  .price-tag-canvas .pt-header { padding: 32px 20px 26px !important; }
+  .price-tag-canvas .pt-category-icon { font-size: 3rem !important; }
+  .price-tag-canvas .pt-category-label { font-size: 2.2rem !important; }
+  .price-tag-canvas .pt-product-name { font-size: 5rem !important; margin-top: 36px !important; }
+  .price-tag-canvas .pt-origin { font-size: 2rem !important; margin-top: 18px !important; }
+  .price-tag-canvas .pt-grade { font-size: 2.2rem !important; padding: 12px 36px !important; }
+  .price-tag-canvas .pt-subtitle-area { font-size: 2.6rem !important; margin-top: 18px !important; }
+  .price-tag-canvas .pt-image-area { width: 50% !important; margin-top: 24px !important; }
+  .price-tag-canvas .pt-image-area img { max-height: none !important; }
+  .price-tag-canvas .pt-custom-texts { padding: 12px 20px !important; }
+  .price-tag-canvas .pt-custom-text-line { font-size: 2rem !important; margin: 8px 0 !important; }
+  .price-tag-canvas .pt-price-area { padding: 36px 24px 32px !important; }
+  .price-tag-canvas .pt-original-price { font-size: 2.2rem !important; }
+  .price-tag-canvas .pt-discount-badge { font-size: 2.2rem !important; padding: 10px 28px !important; margin-bottom: 10px !important; }
+  .price-tag-canvas .pt-price-number { font-size: 8rem !important; }
+  .price-tag-canvas .pt-price-won { font-size: 4rem !important; }
+  .price-tag-canvas .pt-unit { font-size: 2rem !important; margin-top: 8px !important; }
+  .price-tag-canvas .pt-footer { padding: 20px !important; font-size: 1.5rem !important; letter-spacing: 5px !important; }
+  .price-tag-canvas .pt-badge-area .badge { font-size: 2rem !important; padding: 14px 28px !important; }
+
+  /* 가로모드 인쇄 시 */
+  .price-tag-canvas.landscape .pt-image-area { width: 42% !important; }
+  .price-tag-canvas.landscape .pt-body-right .pt-product-name { font-size: 4rem !important; }
+  .price-tag-canvas.landscape .pt-body-right .pt-origin { font-size: 1.8rem !important; }
+  .price-tag-canvas.landscape .pt-body-right .pt-grade { font-size: 2rem !important; }
+  .price-tag-canvas.landscape .pt-body-right .pt-subtitle-area { font-size: 2.2rem !important; }
 
   /* 전체 인쇄 */
   .print-all-area.printing,
   .print-all-area.printing * { visibility: visible; }
   .print-all-area.printing {
     display: block !important;
-    position: absolute;
-    left: 0; top: 0;
-    width: 100%;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
   }
   .print-all-area.printing .print-page {
     page-break-after: always;
     break-after: page;
+    width: 100% !important;
+    height: 100vh !important;
     display: flex;
-    justify-content: center;
+    align-items: stretch;
     padding: 0;
     margin: 0;
   }
@@ -982,12 +1034,15 @@ body {
   .print-all-area.printing .price-tag-canvas {
     box-shadow: none !important;
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    border-radius: 0 !important;
   }
 
+  /* UI 숨김 */
   .app-header, .controls-panel, .app-footer, .preview-toolbar, .btn-group,
   .saved-products-section, .slide-header {
     display: none !important;
   }
-  @page { margin: 10mm; }
 }
