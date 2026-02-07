@@ -1,788 +1,1109 @@
-/* ========================================
-   정육점 POP 가격표 생성기
-   Main Application Logic
-======================================== */
+/**
+ * 인생 시계 & 인맥 장부 (Senior Life Manager)
+ * 메인 애플리케이션 로직
+ */
 
-document.addEventListener('DOMContentLoaded', function() {
-  initPriceTag();
-  initImageFeatures();
-  initZoom();
-  initCustomText();
-  initProductStorage();
-  initSlideView();
-  initAutoCalc();
-  renderSavedProductsList();
-});
+(function () {
+  'use strict';
 
-/* ========================================
-   기본 유틸
-======================================== */
-var CATEGORY_MAP = {
-  beef: { icon: '', label: '소고기' },
-  pork: { icon: '', label: '돼지고기' },
-  chicken: { icon: '', label: '닭고기' },
-  lamb: { icon: '', label: '양고기' },
-  duck: { icon: '', label: '오리고기' },
-  other: { icon: '', label: '기타' },
-};
+  // =========================================================================
+  // 상수 (Constants)
+  // =========================================================================
+  const STORAGE_KEY = 'seniorLifeManager';
+  const HEALTHY_LIFESPAN = 66;
+  const NUDGE_DAYS = 30;
 
-var BADGE_MAP = {
-  best: { text: 'BEST', cls: 'badge-best' },
-  new: { text: 'NEW', cls: 'badge-new' },
-  hot: { text: 'HOT', cls: 'badge-hot' },
-  sale: { text: 'SALE', cls: 'badge-sale' },
-  recommend: { text: '추천', cls: 'badge-recommend' },
-  limited: { text: '한정', cls: 'badge-limited' },
-  today: { text: '오늘특가', cls: 'badge-today' },
-};
+  const RELATIONSHIP_TYPES = [
+    '가족', '친척', '친구', '직장동료', '이웃', '동창', '지인', '기타'
+  ];
 
-var TEMPLATE_COLORS = {
-  'classic-red': '#d32f2f',
-  'premium-black': '#1a1a1a',
-  'fresh-green': '#388e3c',
-  'sale-yellow': '#f57f17',
-  'modern-blue': '#1565c0',
-  'market-korean': '#795548',
-  'hanwoo-premium': '#6d1a1a',
-  'butcher-craft': '#4E342E',
-  'mega-sale': '#FF1744',
-  'clean-minimal': '#37474F',
-};
+  const EVENT_TYPES = [
+    { value: 'wedding', label: '결혼식', emoji: '💒' },
+    { value: 'funeral', label: '장례식', emoji: '🕯️' },
+    { value: 'birthday', label: '생일', emoji: '🎂' },
+    { value: 'baek-il', label: '백일', emoji: '👶' },
+    { value: 'dol', label: '돌잔치', emoji: '🎉' },
+    { value: 'hwangap', label: '환갑/칠순', emoji: '🎊' },
+    { value: 'housewarming', label: '집들이', emoji: '🏠' },
+    { value: 'hospital', label: '병문안', emoji: '🏥' },
+    { value: 'other', label: '기타', emoji: '📝' }
+  ];
 
-var FONT_MAP = {
-  '': "'Noto Sans KR', sans-serif",
-  'black-han-sans': "'Black Han Sans', sans-serif",
-  'do-hyeon': "'Do Hyeon', sans-serif",
-  'jua': "'Jua', sans-serif",
-  'bagel-fat-one': "'Bagel Fat One', system-ui",
-  'gasoek-one': "'Gasoek One', system-ui",
-  'yeon-sung': "'Yeon Sung', system-ui",
-  'dongle': "'Dongle', sans-serif",
-  'gugi': "'Gugi', system-ui",
-  'nanum-pen': "'Nanum Pen Script', cursive",
-};
+  const POSITIVE_MESSAGES = [
+    '오늘 하루도 감사한 마음으로 시작해보세요.',
+    '소중한 사람에게 안부 전화 한 통 어떠세요?',
+    '건강한 하루를 위해 가벼운 산책은 어떨까요?',
+    '좋은 사람들과의 시간이 인생을 풍요롭게 합니다.',
+    '오늘의 작은 행복을 놓치지 마세요.',
+    '당신의 경험과 지혜는 누군가에게 큰 힘이 됩니다.',
+    '남은 시간이 아니라, 채우는 시간이 중요합니다.',
+    '오늘도 당신은 충분히 멋진 사람입니다.',
+    '작은 친절이 큰 행복을 만듭니다.',
+    '매일이 새로운 시작입니다. 힘내세요!'
+  ];
 
-function formatPrice(num) {
-  if (num == null || num === '') return '';
-  var n = Number(num);
-  if (isNaN(n) || !isFinite(n) || n < 0) return '0';
-  return n.toLocaleString('ko-KR');
-}
-
-function escapeHtml(str) {
-  var div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function escapeAttr(str) {
-  if (str == null) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function isSafeImageSrc(url) {
-  if (!url || typeof url !== 'string') return false;
-  return /^(data:image\/|https?:\/\/)/.test(url);
-}
-
-/* ========================================
-   자동 판매가 계산
-======================================== */
-function initAutoCalc() {
-  var origEl = document.getElementById('pt-original-price');
-  var discEl = document.getElementById('pt-discount');
-  if (origEl) origEl.addEventListener('input', autoCalcPrice);
-  if (discEl) discEl.addEventListener('input', autoCalcPrice);
-}
-
-function autoCalcPrice() {
-  var originalPrice = parseFloat(document.getElementById('pt-original-price').value);
-  var discount = parseFloat(document.getElementById('pt-discount').value);
-
-  if (!isNaN(originalPrice) && originalPrice > 0 && !isNaN(discount) && discount > 0 && discount <= 99) {
-    var salePrice = Math.round(originalPrice * (1 - discount / 100));
-    document.getElementById('pt-price').value = salePrice;
-    triggerRender();
-  }
-}
-
-/* ========================================
-   POP 가격표 기능
-======================================== */
-var ptFields = null;
-var ptCanvas = null;
-
-function initPriceTag() {
-  var $ = function(id) { return document.getElementById(id); };
-
-  ptFields = {
-    template: $('pt-template'),
-    orientation: $('pt-orientation'),
-    font: $('pt-font'),
-    category: $('pt-category'),
-    product: $('pt-product'),
-    origin: $('pt-origin'),
-    grade: $('pt-grade'),
-    price: $('pt-price'),
-    unit: $('pt-unit'),
-    originalPrice: $('pt-original-price'),
-    discount: $('pt-discount'),
-    subtitle: $('pt-subtitle'),
-    badge: $('pt-badge'),
-    size: $('pt-size'),
+  // =========================================================================
+  // 상태 관리 (State Management)
+  // =========================================================================
+  let state = {
+    user: null,
+    contacts: [],
+    currentView: 'life-clock',
+    selectedContactId: null,
+    editingContactId: null
   };
 
-  ptCanvas = $('pt-canvas');
-
-  Object.values(ptFields).forEach(function(el) {
-    if (!el) return;
-    el.addEventListener('input', function() { renderPriceTag(ptFields, ptCanvas); });
-    el.addEventListener('change', function() { renderPriceTag(ptFields, ptCanvas); });
-  });
-
-  $('pt-download-btn').addEventListener('click', function() { downloadCanvas('pt-canvas', 'pop-가격표'); });
-  $('pt-print-btn').addEventListener('click', function() { printCanvas('pt-canvas'); });
-
-  renderPriceTag(ptFields, ptCanvas);
-}
-
-function renderPriceTag(fields, canvas) {
-  var template = fields.template.value;
-  var orientation = fields.orientation.value;
-  var fontKey = fields.font ? fields.font.value : '';
-  var cat = CATEGORY_MAP[fields.category.value] || CATEGORY_MAP.other;
-  var product = fields.product.value || '상품명';
-  var origin = fields.origin.value;
-  var grade = fields.grade.value;
-  var price = fields.price.value;
-  var unit = fields.unit.value;
-  var originalPrice = fields.originalPrice.value;
-  var discount = fields.discount.value;
-  var subtitle = fields.subtitle.value;
-  var badgeKey = fields.badge.value;
-  var isLandscape = orientation === 'landscape';
-
-  canvas.className = 'price-tag-canvas ' + template + (isLandscape ? ' landscape' : '');
-
-  // Badge
-  var badgeArea = canvas.querySelector('.pt-badge-area');
-  if (badgeKey && BADGE_MAP[badgeKey]) {
-    var b = BADGE_MAP[badgeKey];
-    badgeArea.innerHTML = '<span class="badge ' + b.cls + '">' + b.text + '</span>';
-  } else {
-    badgeArea.innerHTML = '';
+  // =========================================================================
+  // LocalStorage
+  // =========================================================================
+  function saveState() {
+    try {
+      const data = {
+        user: state.user,
+        contacts: state.contacts
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('저장 실패:', e);
+    }
   }
 
-  canvas.querySelector('.pt-category-icon').textContent = cat.icon;
-  canvas.querySelector('.pt-category-label').textContent = cat.label;
-
-  // Body area - 가로모드일 때 이미지 왼쪽 / 텍스트 오른쪽
-  var body = canvas.querySelector('.pt-body');
-  var imageArea = body.querySelector('.pt-image-area');
-  var hasImage = currentImages.pt && isSafeImageSrc(currentImages.pt);
-
-  if (isLandscape && hasImage) {
-    var rightDiv = body.querySelector('.pt-body-right');
-    if (!rightDiv) {
-      rightDiv = document.createElement('div');
-      rightDiv.className = 'pt-body-right';
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        state.user = data.user || null;
+        state.contacts = data.contacts || [];
+      }
+    } catch (e) {
+      console.error('불러오기 실패:', e);
     }
-    imageArea.innerHTML = '';
-    imageArea.style.display = 'block';
-    var img = document.createElement('img');
-    img.src = currentImages.pt;
-    img.alt = '상품 이미지';
-    imageArea.appendChild(img);
+  }
 
-    rightDiv.innerHTML = '';
-    var nameDiv = document.createElement('div');
-    nameDiv.className = 'pt-product-name';
-    nameDiv.textContent = product;
-    rightDiv.appendChild(nameDiv);
+  // =========================================================================
+  // 유틸리티 (Utilities)
+  // =========================================================================
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  }
 
-    if (origin) {
-      var originDiv = document.createElement('div');
-      originDiv.className = 'pt-origin';
-      originDiv.textContent = '원산지: ' + origin;
-      rightDiv.appendChild(originDiv);
+  function $(selector) {
+    return document.querySelector(selector);
+  }
+
+  function $$(selector) {
+    return document.querySelectorAll(selector);
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+  }
+
+  function daysBetween(date1, date2) {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    d1.setHours(0, 0, 0, 0);
+    d2.setHours(0, 0, 0, 0);
+    return Math.floor((d2 - d1) / 86400000);
+  }
+
+  function getAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
     }
-    if (grade) {
-      var gradeDiv = document.createElement('div');
-      gradeDiv.className = 'pt-grade-area';
-      gradeDiv.innerHTML = '<span class="pt-grade">' + escapeHtml(grade) + '</span>';
-      rightDiv.appendChild(gradeDiv);
+    return age;
+  }
+
+  function getRandomMessage() {
+    return POSITIVE_MESSAGES[Math.floor(Math.random() * POSITIVE_MESSAGES.length)];
+  }
+
+  function getEventTypeInfo(value) {
+    return EVENT_TYPES.find(function (e) { return e.value === value; }) || { value: 'other', label: '기타', emoji: '📝' };
+  }
+
+  // =========================================================================
+  // 뷰 라우팅 (View Routing)
+  // =========================================================================
+  function showView(viewName) {
+    state.currentView = viewName;
+    $$('.view').forEach(function (v) { v.classList.remove('active'); });
+    var targetView = $('#view-' + viewName);
+    if (targetView) targetView.classList.add('active');
+
+    $$('.tab-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.view === viewName);
+    });
+
+    switch (viewName) {
+      case 'life-clock':
+        renderLifeClock();
+        break;
+      case 'contacts':
+        renderContacts();
+        break;
+      case 'settings':
+        renderSettings();
+        break;
     }
-    if (subtitle) {
-      var subDiv = document.createElement('div');
-      subDiv.className = 'pt-subtitle-area';
-      subDiv.textContent = subtitle;
-      subDiv.style.display = 'block';
-      rightDiv.appendChild(subDiv);
+  }
+
+  // =========================================================================
+  // 온보딩 (Onboarding)
+  // =========================================================================
+  function showOnboarding() {
+    $('#view-onboarding').classList.add('active');
+    $('#bottom-nav').style.display = 'none';
+
+    var form = $('#onboarding-form');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = $('#input-name').value.trim();
+      var birthDate = $('#input-birth').value;
+      var gender = $('input[name="gender"]:checked');
+
+      if (!name || !birthDate) {
+        showToast('이름과 생년월일을 입력해주세요.');
+        return;
+      }
+
+      state.user = {
+        name: name,
+        birthDate: birthDate,
+        gender: gender ? gender.value : 'male'
+      };
+      saveState();
+
+      $('#view-onboarding').classList.remove('active');
+      $('#bottom-nav').style.display = '';
+      $('#onboarding-title').textContent = '환영합니다!';
+      $('#onboarding-submit').textContent = '시작하기';
+      showView('life-clock');
+    });
+  }
+
+  // =========================================================================
+  // 인생 시계 (Life Clock)
+  // =========================================================================
+  function calculateLifeStats() {
+    if (!state.user) return null;
+
+    var birth = new Date(state.user.birthDate);
+    var today = new Date();
+    var age = getAge(state.user.birthDate);
+
+    var lifespan = state.user.gender === 'female' ? 86 : 80;
+    var healthyAge = HEALTHY_LIFESPAN;
+
+    var totalYears = Math.max(0, lifespan - age);
+    var totalMonths = Math.max(0, totalYears * 12);
+    var totalWeeks = Math.max(0, totalYears * 52);
+    var lifespanDate = new Date(birth.getFullYear() + lifespan, birth.getMonth(), birth.getDate());
+    var totalDays = Math.max(0, Math.floor((lifespanDate - today) / 86400000));
+
+    var healthyYears = Math.max(0, healthyAge - age);
+    var healthyEndDate = new Date(birth.getFullYear() + healthyAge, birth.getMonth(), birth.getDate());
+    var healthyDays = Math.max(0, Math.floor((healthyEndDate - today) / 86400000));
+
+    var lifeProgress = Math.min(100, (age / lifespan) * 100);
+    var healthyProgress = Math.min(100, (age / healthyAge) * 100);
+
+    var livedDays = Math.floor((today - birth) / 86400000);
+
+    return {
+      age: age,
+      lifespan: lifespan,
+      healthyAge: healthyAge,
+      totalYears: totalYears,
+      totalMonths: totalMonths,
+      totalWeeks: totalWeeks,
+      totalDays: totalDays,
+      healthyYears: healthyYears,
+      healthyDays: healthyDays,
+      lifeProgress: lifeProgress,
+      healthyProgress: healthyProgress,
+      livedDays: livedDays
+    };
+  }
+
+  function renderLifeClock() {
+    var stats = calculateLifeStats();
+    if (!stats) return;
+
+    var container = $('#life-clock-content');
+
+    var radius = 120;
+    var circumference = 2 * Math.PI * radius;
+    var innerRadius = radius - 25;
+    var innerCircumference = 2 * Math.PI * innerRadius;
+    var lifeOffset = circumference * (1 - stats.lifeProgress / 100);
+    var healthyOffset = innerCircumference * (1 - stats.healthyProgress / 100);
+
+    var outerColor = stats.totalYears > 10 ? '#4CAF50' : stats.totalYears > 5 ? '#FF9800' : '#E74C3C';
+    var innerColor = stats.healthyYears > 0 ? '#2196F3' : '#9E9E9E';
+
+    container.innerHTML =
+      '<div class="greeting-section">' +
+        '<h2 class="greeting-name">' + state.user.name + '님의 인생 시계</h2>' +
+        '<p class="greeting-age">만 ' + stats.age + '세 &middot; ' + stats.livedDays.toLocaleString() + '일째 인생</p>' +
+      '</div>' +
+
+      '<div class="clock-container">' +
+        '<svg viewBox="0 0 300 300" class="life-clock-svg">' +
+          '<circle cx="150" cy="150" r="' + radius + '" fill="none" stroke="#E8E0D8" stroke-width="18" />' +
+          '<circle cx="150" cy="150" r="' + radius + '" fill="none" ' +
+            'stroke="' + outerColor + '" stroke-width="18" ' +
+            'stroke-dasharray="' + circumference + '" ' +
+            'stroke-dashoffset="' + lifeOffset + '" ' +
+            'stroke-linecap="round" ' +
+            'transform="rotate(-90 150 150)" ' +
+            'class="gauge-animated" />' +
+          '<circle cx="150" cy="150" r="' + innerRadius + '" fill="none" stroke="#E8E0D8" stroke-width="10" />' +
+          '<circle cx="150" cy="150" r="' + innerRadius + '" fill="none" ' +
+            'stroke="' + innerColor + '" stroke-width="10" ' +
+            'stroke-dasharray="' + innerCircumference + '" ' +
+            'stroke-dashoffset="' + healthyOffset + '" ' +
+            'stroke-linecap="round" ' +
+            'transform="rotate(-90 150 150)" ' +
+            'class="gauge-animated" />' +
+          '<text x="150" y="130" text-anchor="middle" class="clock-center-number">' + stats.totalYears + '</text>' +
+          '<text x="150" y="165" text-anchor="middle" class="clock-center-label">년 남음</text>' +
+        '</svg>' +
+        '<div class="clock-legend">' +
+          '<span class="legend-item"><span class="legend-dot" style="background:' + outerColor + '"></span>평균수명(' + stats.lifespan + '세)</span>' +
+          '<span class="legend-item"><span class="legend-dot" style="background:' + innerColor + '"></span>건강수명(' + stats.healthyAge + '세)</span>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="stats-grid">' +
+        '<div class="stat-card stat-healthy">' +
+          '<div class="stat-icon">💪</div>' +
+          '<div class="stat-value">' + (stats.healthyYears > 0 ? stats.healthyYears + '년' : '지남') + '</div>' +
+          '<div class="stat-label">건강수명까지</div>' +
+        '</div>' +
+        '<div class="stat-card stat-total">' +
+          '<div class="stat-icon">📅</div>' +
+          '<div class="stat-value">' + stats.totalDays.toLocaleString() + '일</div>' +
+          '<div class="stat-label">남은 날</div>' +
+        '</div>' +
+        '<div class="stat-card stat-weeks">' +
+          '<div class="stat-icon">📆</div>' +
+          '<div class="stat-value">' + stats.totalWeeks.toLocaleString() + '주</div>' +
+          '<div class="stat-label">남은 주</div>' +
+        '</div>' +
+        '<div class="stat-card stat-months">' +
+          '<div class="stat-icon">🗓️</div>' +
+          '<div class="stat-value">' + stats.totalMonths.toLocaleString() + '개월</div>' +
+          '<div class="stat-label">남은 달</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="message-card">' +
+        '<p class="message-text">&ldquo;' + getRandomMessage() + '&rdquo;</p>' +
+      '</div>' +
+
+      renderNudgeSection();
+
+    requestAnimationFrame(function () {
+      $$('.gauge-animated').forEach(function (el) { el.classList.add('animate'); });
+    });
+  }
+
+  function renderNudgeSection() {
+    var todayStr = new Date().toISOString().split('T')[0];
+    var nudgeContacts = state.contacts.filter(function (c) {
+      if (!c.lastContact) return true;
+      return daysBetween(c.lastContact, todayStr) >= NUDGE_DAYS;
+    }).slice(0, 3);
+
+    if (nudgeContacts.length === 0) return '';
+
+    var html = '<div class="nudge-section">' +
+      '<h3 class="nudge-title">📞 안부를 전해보세요</h3>';
+
+    nudgeContacts.forEach(function (contact) {
+      var daysSince = contact.lastContact
+        ? daysBetween(contact.lastContact, todayStr)
+        : null;
+      var urgencyClass = daysSince === null ? 'urgent' : daysSince >= 60 ? 'urgent' : 'warning';
+
+      html +=
+        '<div class="nudge-card ' + urgencyClass + '" data-contact-id="' + contact.id + '">' +
+          '<div class="nudge-info">' +
+            '<span class="nudge-name">' + contact.name + '</span>' +
+            '<span class="nudge-relation">' + contact.relationship + '</span>' +
+            '<span class="nudge-days">' + (daysSince !== null ? daysSince + '일 전 연락' : '연락 기록 없음') + '</span>' +
+          '</div>' +
+          '<button class="nudge-call-btn" onclick="app.markContacted(\'' + contact.id + '\')" aria-label="' + contact.name + '에게 연락 표시">' +
+            '📞 연락함' +
+          '</button>' +
+        '</div>';
+    });
+
+    html += '</div>';
+    return html;
+  }
+
+  // =========================================================================
+  // 인맥 장부 - 연락처 목록 (Contacts List)
+  // =========================================================================
+  function renderContacts() {
+    var container = $('#contacts-content');
+    var searchInput = $('#contact-search');
+    var searchTerm = searchInput ? searchInput.value : '';
+
+    var filtered = state.contacts;
+    if (searchTerm) {
+      var term = searchTerm.toLowerCase();
+      filtered = filtered.filter(function (c) {
+        return c.name.toLowerCase().indexOf(term) !== -1 ||
+          c.relationship.toLowerCase().indexOf(term) !== -1;
+      });
     }
 
-    var directName = body.querySelector(':scope > .pt-product-name');
-    var directOrigin = body.querySelector(':scope > .pt-origin');
-    var directGrade = body.querySelector(':scope > .pt-grade-area');
-    var directSub = body.querySelector(':scope > .pt-subtitle-area');
-    if (directName) directName.style.display = 'none';
-    if (directOrigin) directOrigin.style.display = 'none';
-    if (directGrade) directGrade.style.display = 'none';
-    if (directSub) directSub.style.display = 'none';
+    filtered = sortContactsByUpcoming(filtered);
 
-    if (!body.querySelector('.pt-body-right')) {
-      body.appendChild(rightDiv);
+    if (filtered.length === 0 && !searchTerm) {
+      container.innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-icon">👥</div>' +
+          '<p class="empty-text">아직 등록된 사람이 없습니다</p>' +
+          '<p class="empty-sub">아래 버튼을 눌러<br>소중한 사람을 추가해보세요</p>' +
+        '</div>';
+      return;
     }
-  } else {
-    var existingRight = body.querySelector('.pt-body-right');
-    if (existingRight) existingRight.remove();
 
-    var directName = body.querySelector(':scope > .pt-product-name');
-    var directOrigin = body.querySelector(':scope > .pt-origin');
-    var directGrade = body.querySelector(':scope > .pt-grade-area');
-    var directSub = body.querySelector(':scope > .pt-subtitle-area');
-
-    if (directName) { directName.textContent = product; directName.style.display = ''; }
-    if (directOrigin) {
-      directOrigin.textContent = origin ? '원산지: ' + origin : '';
-      directOrigin.style.display = origin ? 'block' : 'none';
+    if (filtered.length === 0 && searchTerm) {
+      container.innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-icon">🔍</div>' +
+          '<p class="empty-text">&ldquo;' + searchTerm + '&rdquo; 검색 결과가 없습니다</p>' +
+        '</div>';
+      return;
     }
-    if (directGrade) {
-      if (grade) {
-        directGrade.innerHTML = '<span class="pt-grade">' + escapeHtml(grade) + '</span>';
-        directGrade.style.display = 'block';
+
+    var html = '';
+    var todayStr = new Date().toISOString().split('T')[0];
+
+    filtered.forEach(function (contact) {
+      var nextEvent = getNextEventInfo(contact);
+      var daysSinceContact = contact.lastContact
+        ? daysBetween(contact.lastContact, todayStr)
+        : null;
+
+      var contactStatusClass = '';
+      var contactStatusText = '';
+      if (daysSinceContact === null) {
+        contactStatusClass = 'status-none';
+        contactStatusText = '연락 기록 없음';
+      } else if (daysSinceContact >= 60) {
+        contactStatusClass = 'status-urgent';
+        contactStatusText = daysSinceContact + '일 전';
+      } else if (daysSinceContact >= 30) {
+        contactStatusClass = 'status-warning';
+        contactStatusText = daysSinceContact + '일 전';
       } else {
-        directGrade.innerHTML = '';
-        directGrade.style.display = 'none';
+        contactStatusClass = 'status-ok';
+        contactStatusText = daysSinceContact + '일 전';
+      }
+
+      var lunarBirthdayText = '';
+      if (contact.birthDate) {
+        var bd = new Date(contact.birthDate);
+        var today = new Date();
+        if (contact.birthType === 'lunar') {
+          var solar = LunarCalendar.getNextLunarBirthdaySolar(bd.getMonth() + 1, bd.getDate(), false);
+          if (solar) {
+            var solarDateStr = solar.year + '-' + String(solar.month).padStart(2, '0') + '-' + String(solar.day).padStart(2, '0');
+            var daysUntil = daysBetween(todayStr, solarDateStr);
+            if (daysUntil >= 0 && daysUntil <= 30) {
+              lunarBirthdayText = '🎂 음력 생일 ' + daysUntil + '일 후';
+            }
+          }
+        } else {
+          var thisYearBd = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
+          if (thisYearBd < today) thisYearBd.setFullYear(today.getFullYear() + 1);
+          var daysUntilSolar = daysBetween(todayStr, thisYearBd.toISOString().split('T')[0]);
+          if (daysUntilSolar >= 0 && daysUntilSolar <= 30) {
+            lunarBirthdayText = '🎂 생일 ' + daysUntilSolar + '일 후';
+          }
+        }
+      }
+
+      html +=
+        '<div class="contact-card" onclick="app.showContactDetail(\'' + contact.id + '\')">' +
+          '<div class="contact-avatar">' + contact.name.charAt(0) + '</div>' +
+          '<div class="contact-info">' +
+            '<div class="contact-name">' + contact.name + '</div>' +
+            '<div class="contact-relation">' + contact.relationship + '</div>' +
+            (lunarBirthdayText ? '<div class="contact-birthday-soon">' + lunarBirthdayText + '</div>' : '') +
+            (nextEvent ? '<div class="contact-next-event">' + nextEvent + '</div>' : '') +
+          '</div>' +
+          '<div class="contact-status ' + contactStatusClass + '">' +
+            '<span class="status-dot"></span>' +
+            '<span class="status-text">' + contactStatusText + '</span>' +
+          '</div>' +
+        '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  function sortContactsByUpcoming(contacts) {
+    var todayStr = new Date().toISOString().split('T')[0];
+    return contacts.slice().sort(function (a, b) {
+      var aDays = a.lastContact ? daysBetween(a.lastContact, todayStr) : 9999;
+      var bDays = b.lastContact ? daysBetween(b.lastContact, todayStr) : 9999;
+      return bDays - aDays;
+    });
+  }
+
+  function getNextEventInfo(contact) {
+    if (!contact.events || contact.events.length === 0) return '';
+    var sorted = contact.events.slice().sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+    var latest = sorted[0];
+    var info = getEventTypeInfo(latest.type);
+    return info.emoji + ' ' + info.label + ' (' + formatDate(latest.date) + ')';
+  }
+
+  // =========================================================================
+  // 인맥 장부 - 연락처 상세 (Contact Detail)
+  // =========================================================================
+  function showContactDetail(contactId) {
+    var contact = state.contacts.find(function (c) { return c.id === contactId; });
+    if (!contact) return;
+
+    state.selectedContactId = contactId;
+
+    var container = $('#contact-detail-content');
+
+    var birthdayInfo = '';
+    if (contact.birthDate) {
+      var bd = new Date(contact.birthDate);
+      if (contact.birthType === 'lunar') {
+        var solar = LunarCalendar.lunarToSolar(bd.getFullYear(), bd.getMonth() + 1, bd.getDate(), false);
+        birthdayInfo =
+          '<div class="detail-birthday">' +
+            '<div class="birthday-main">음력 ' + (bd.getMonth() + 1) + '월 ' + bd.getDate() + '일</div>' +
+            (solar ? '<div class="birthday-convert">→ 양력 ' + solar.year + '년 ' + solar.month + '월 ' + solar.day + '일</div>' : '') +
+          '</div>';
+      } else {
+        var lunar = LunarCalendar.solarToLunar(bd.getFullYear(), bd.getMonth() + 1, bd.getDate());
+        birthdayInfo =
+          '<div class="detail-birthday">' +
+            '<div class="birthday-main">양력 ' + (bd.getMonth() + 1) + '월 ' + bd.getDate() + '일</div>' +
+            (lunar ? '<div class="birthday-convert">→ 음력 ' + lunar.monthStr + ' (' + lunar.yearGanZhi + ')</div>' : '') +
+          '</div>';
       }
     }
-    if (directSub) {
-      directSub.textContent = subtitle || '';
-      directSub.style.display = subtitle ? 'block' : 'none';
+
+    var eventsHtml = '';
+    if (contact.events && contact.events.length > 0) {
+      var sorted = contact.events.slice().sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+      eventsHtml = sorted.map(function (ev) {
+        var info = getEventTypeInfo(ev.type);
+        return '<div class="event-item">' +
+          '<span class="event-emoji">' + info.emoji + '</span>' +
+          '<div class="event-info">' +
+            '<div class="event-type">' + info.label + (ev.direction === 'sent' ? ' (보냄)' : ev.direction === 'received' ? ' (받음)' : '') + '</div>' +
+            '<div class="event-date">' + formatDate(ev.date) + '</div>' +
+            (ev.amount ? '<div class="event-amount">' + Number(ev.amount).toLocaleString() + '원</div>' : '') +
+            (ev.memo ? '<div class="event-memo">' + ev.memo + '</div>' : '') +
+          '</div>' +
+          '<button class="event-delete-btn" onclick="event.stopPropagation(); app.deleteEvent(\'' + contact.id + '\', \'' + ev.id + '\')" aria-label="경조사 삭제">✕</button>' +
+        '</div>';
+      }).join('');
     }
 
-    imageArea.innerHTML = '';
-    if (hasImage) {
-      var img = document.createElement('img');
-      img.src = currentImages.pt;
-      img.alt = '상품 이미지';
-      imageArea.appendChild(img);
-      imageArea.style.display = 'block';
+    container.innerHTML =
+      '<div class="detail-header">' +
+        '<button class="back-btn" onclick="app.showView(\'contacts\')" aria-label="뒤로가기">← 뒤로</button>' +
+        '<div class="detail-actions">' +
+          '<button class="edit-btn" onclick="app.showEditContact(\'' + contact.id + '\')" aria-label="수정">✏️ 수정</button>' +
+          '<button class="delete-btn" onclick="app.deleteContact(\'' + contact.id + '\')" aria-label="삭제">🗑️ 삭제</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="detail-profile">' +
+        '<div class="detail-avatar">' + contact.name.charAt(0) + '</div>' +
+        '<h2 class="detail-name">' + contact.name + '</h2>' +
+        '<span class="detail-relation-badge">' + contact.relationship + '</span>' +
+      '</div>' +
+
+      (contact.phone ?
+        '<a href="tel:' + contact.phone + '" class="call-button">' +
+          '📞 전화걸기 (' + contact.phone + ')' +
+        '</a>' : '') +
+
+      '<div class="detail-section">' +
+        '<h3>📋 기본 정보</h3>' +
+        (birthdayInfo || '<p class="no-data">생일 정보 없음</p>') +
+        '<div class="detail-last-contact">' +
+          '<strong>마지막 연락:</strong> ' +
+          (contact.lastContact ? formatDate(contact.lastContact) : '기록 없음') +
+          ' <button class="mark-contact-btn" onclick="app.markContacted(\'' + contact.id + '\')">' +
+            '✅ 오늘 연락함' +
+          '</button>' +
+        '</div>' +
+        (contact.memo ? '<div class="detail-memo"><strong>메모:</strong> ' + contact.memo + '</div>' : '') +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="section-header">' +
+          '<h3>💰 경조사 내역</h3>' +
+          '<button class="add-event-btn" onclick="app.showAddEvent(\'' + contact.id + '\')">+ 추가</button>' +
+        '</div>' +
+        (eventsHtml || '<p class="no-data">아직 경조사 내역이 없습니다</p>') +
+        (contact.events && contact.events.length > 0 ?
+          '<div class="events-summary">' +
+            '<strong>총 ' + contact.events.length + '건</strong> · ' +
+            '보낸 금액: ' + calculateTotalSent(contact).toLocaleString() + '원 · ' +
+            '받은 금액: ' + calculateTotalReceived(contact).toLocaleString() + '원' +
+          '</div>' : '') +
+      '</div>';
+
+    showView('contact-detail');
+  }
+
+  function calculateTotalSent(contact) {
+    if (!contact.events) return 0;
+    return contact.events
+      .filter(function (e) { return e.direction === 'sent'; })
+      .reduce(function (sum, e) { return sum + (Number(e.amount) || 0); }, 0);
+  }
+
+  function calculateTotalReceived(contact) {
+    if (!contact.events) return 0;
+    return contact.events
+      .filter(function (e) { return e.direction === 'received'; })
+      .reduce(function (sum, e) { return sum + (Number(e.amount) || 0); }, 0);
+  }
+
+  // =========================================================================
+  // 연락처 추가/수정 (Add/Edit Contact)
+  // =========================================================================
+  function showAddContact() {
+    state.editingContactId = null;
+    renderContactForm(null);
+    showView('contact-form');
+  }
+
+  function showEditContact(contactId) {
+    var contact = state.contacts.find(function (c) { return c.id === contactId; });
+    if (!contact) return;
+    state.editingContactId = contactId;
+    renderContactForm(contact);
+    showView('contact-form');
+  }
+
+  function renderContactForm(contact) {
+    var container = $('#contact-form-content');
+    var isEdit = !!contact;
+
+    var relationOptions = RELATIONSHIP_TYPES.map(function (r) {
+      return '<option value="' + r + '" ' + (contact && contact.relationship === r ? 'selected' : '') + '>' + r + '</option>';
+    }).join('');
+
+    container.innerHTML =
+      '<div class="form-header">' +
+        '<button class="back-btn" onclick="app.goBackFromForm()" aria-label="뒤로가기">← 취소</button>' +
+        '<h2>' + (isEdit ? '연락처 수정' : '새 연락처') + '</h2>' +
+      '</div>' +
+
+      '<form id="contact-edit-form" class="contact-form">' +
+        '<div class="form-group">' +
+          '<label for="cf-name">이름 *</label>' +
+          '<input type="text" id="cf-name" value="' + (contact ? contact.name : '') + '" required placeholder="이름을 입력하세요" autocomplete="name">' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label for="cf-relation">관계</label>' +
+          '<select id="cf-relation">' + relationOptions + '</select>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label for="cf-phone">전화번호</label>' +
+          '<input type="tel" id="cf-phone" value="' + (contact ? (contact.phone || '') : '') + '" placeholder="010-0000-0000" autocomplete="tel">' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label>생년월일</label>' +
+          '<div class="birth-type-toggle">' +
+            '<button type="button" class="toggle-btn ' + (!contact || contact.birthType !== 'lunar' ? 'active' : '') + '" data-birth-type="solar" onclick="app.toggleBirthType(\'solar\')">양력</button>' +
+            '<button type="button" class="toggle-btn ' + (contact && contact.birthType === 'lunar' ? 'active' : '') + '" data-birth-type="lunar" onclick="app.toggleBirthType(\'lunar\')">음력</button>' +
+          '</div>' +
+          '<input type="date" id="cf-birth" value="' + (contact ? (contact.birthDate || '') : '') + '">' +
+          '<div id="cf-lunar-info" class="lunar-info"></div>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label for="cf-memo">메모</label>' +
+          '<textarea id="cf-memo" rows="3" placeholder="기억할 내용을 적어보세요">' + (contact ? (contact.memo || '') : '') + '</textarea>' +
+        '</div>' +
+
+        '<button type="submit" class="submit-btn">' + (isEdit ? '수정 완료' : '저장하기') + '</button>' +
+      '</form>';
+
+    var form = $('#contact-edit-form');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      saveContact();
+    });
+
+    var birthInput = $('#cf-birth');
+    birthInput.addEventListener('change', updateLunarInfo);
+    if (contact && contact.birthDate) {
+      updateLunarInfo();
+    }
+  }
+
+  function goBackFromForm() {
+    if (state.editingContactId) {
+      showContactDetail(state.editingContactId);
     } else {
-      imageArea.style.display = 'none';
+      showView('contacts');
     }
   }
 
-  renderCustomTextsOnCanvas();
-
-  // 글씨체 적용
-  applyFontToCanvas(canvas, fontKey);
-
-  // Price
-  var originalPriceEl = canvas.querySelector('.pt-original-price');
-  if (originalPrice) {
-    originalPriceEl.textContent = formatPrice(originalPrice) + '원';
-    originalPriceEl.style.display = 'block';
-  } else {
-    originalPriceEl.textContent = '';
-    originalPriceEl.style.display = 'none';
-  }
-
-  // 할인율 표시 (숫자 → XX% 형식)
-  var discountBadge = canvas.querySelector('.pt-discount-badge');
-  var discountNum = parseFloat(discount);
-  if (!isNaN(discountNum) && discountNum > 0) {
-    discountBadge.textContent = discountNum + '%';
-    discountBadge.style.display = 'inline-block';
-  } else {
-    discountBadge.textContent = '';
-    discountBadge.style.display = 'none';
-  }
-
-  canvas.querySelector('.pt-price-number').textContent = price ? formatPrice(price) : '0';
-  canvas.querySelector('.pt-unit').textContent = '/ ' + unit;
-}
-
-/* ========================================
-   글씨체 적용
-======================================== */
-function applyFontToCanvas(canvas, fontKey) {
-  var fontFamily = FONT_MAP[fontKey] || '';
-  var elements = canvas.querySelectorAll('.pt-product-name, .pt-price-number, .pt-subtitle-area, .pt-custom-text-line');
-  if (fontKey) {
-    elements.forEach(function(el) {
-      el.style.fontFamily = fontFamily;
+  function toggleBirthType(type) {
+    $$('.birth-type-toggle .toggle-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.birthType === type);
     });
-  } else {
-    elements.forEach(function(el) {
-      el.style.fontFamily = '';
+    updateLunarInfo();
+  }
+
+  function updateLunarInfo() {
+    var birthInput = $('#cf-birth');
+    var infoDiv = $('#cf-lunar-info');
+    if (!birthInput || !birthInput.value || !infoDiv) return;
+
+    var d = new Date(birthInput.value);
+    var activeBtn = $('.birth-type-toggle .toggle-btn.active');
+    if (!activeBtn) return;
+    var isLunar = activeBtn.dataset.birthType === 'lunar';
+
+    if (isLunar) {
+      var solar = LunarCalendar.lunarToSolar(d.getFullYear(), d.getMonth() + 1, d.getDate(), false);
+      if (solar) {
+        infoDiv.textContent = '→ 양력: ' + solar.year + '년 ' + solar.month + '월 ' + solar.day + '일';
+      } else {
+        infoDiv.textContent = '변환할 수 없는 날짜입니다';
+      }
+    } else {
+      var lunar = LunarCalendar.solarToLunar(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      if (lunar) {
+        infoDiv.textContent = '→ 음력: ' + lunar.year + '년 ' + lunar.monthStr + ' (' + lunar.yearGanZhi + ')';
+      } else {
+        infoDiv.textContent = '변환할 수 없는 날짜입니다';
+      }
+    }
+  }
+
+  function saveContact() {
+    var name = $('#cf-name').value.trim();
+    if (!name) {
+      showToast('이름을 입력해주세요.');
+      return;
+    }
+
+    var activeBtn = $('.birth-type-toggle .toggle-btn.active');
+    var isLunar = activeBtn && activeBtn.dataset.birthType === 'lunar';
+
+    var contactData = {
+      name: name,
+      relationship: $('#cf-relation').value,
+      phone: $('#cf-phone').value.trim(),
+      birthDate: $('#cf-birth').value || null,
+      birthType: isLunar ? 'lunar' : 'solar',
+      memo: $('#cf-memo').value.trim()
+    };
+
+    if (state.editingContactId) {
+      var idx = state.contacts.findIndex(function (c) { return c.id === state.editingContactId; });
+      if (idx !== -1) {
+        var existing = state.contacts[idx];
+        state.contacts[idx] = {
+          id: existing.id,
+          events: existing.events,
+          lastContact: existing.lastContact,
+          createdAt: existing.createdAt,
+          name: contactData.name,
+          relationship: contactData.relationship,
+          phone: contactData.phone,
+          birthDate: contactData.birthDate,
+          birthType: contactData.birthType,
+          memo: contactData.memo
+        };
+      }
+      saveState();
+      showToast('수정되었습니다.');
+      showContactDetail(state.editingContactId);
+    } else {
+      var newContact = {
+        id: generateId(),
+        name: contactData.name,
+        relationship: contactData.relationship,
+        phone: contactData.phone,
+        birthDate: contactData.birthDate,
+        birthType: contactData.birthType,
+        memo: contactData.memo,
+        events: [],
+        lastContact: null,
+        createdAt: new Date().toISOString()
+      };
+      state.contacts.push(newContact);
+      saveState();
+      showToast('새 연락처가 추가되었습니다.');
+      showView('contacts');
+    }
+  }
+
+  function deleteContact(contactId) {
+    if (!confirm('정말 삭제하시겠습니까?\n삭제된 정보는 복구할 수 없습니다.')) return;
+    state.contacts = state.contacts.filter(function (c) { return c.id !== contactId; });
+    saveState();
+    showToast('삭제되었습니다.');
+    showView('contacts');
+  }
+
+  function markContacted(contactId) {
+    var contact = state.contacts.find(function (c) { return c.id === contactId; });
+    if (!contact) return;
+    contact.lastContact = new Date().toISOString().split('T')[0];
+    saveState();
+    showToast(contact.name + '님에게 연락 완료!');
+
+    if (state.currentView === 'life-clock') {
+      renderLifeClock();
+    } else if (state.currentView === 'contact-detail') {
+      showContactDetail(contactId);
+    } else {
+      renderContacts();
+    }
+  }
+
+  // =========================================================================
+  // 경조사 추가 (Add Event)
+  // =========================================================================
+  function showAddEvent(contactId) {
+    var contact = state.contacts.find(function (c) { return c.id === contactId; });
+    if (!contact) return;
+
+    var typeOptions = EVENT_TYPES.map(function (t) {
+      return '<option value="' + t.value + '">' + t.emoji + ' ' + t.label + '</option>';
+    }).join('');
+
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'event-modal';
+    modal.innerHTML =
+      '<div class="modal-content">' +
+        '<div class="modal-header">' +
+          '<h3>' + contact.name + '님 경조사 추가</h3>' +
+          '<button class="modal-close" onclick="app.closeModal()" aria-label="닫기">✕</button>' +
+        '</div>' +
+        '<form id="event-form">' +
+          '<div class="form-group">' +
+            '<label for="ev-type">종류</label>' +
+            '<select id="ev-type">' + typeOptions + '</select>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label for="ev-date">날짜</label>' +
+            '<input type="date" id="ev-date" value="' + new Date().toISOString().split('T')[0] + '" required>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label>보낸/받은</label>' +
+            '<div class="direction-toggle">' +
+              '<button type="button" class="toggle-btn active" data-direction="sent" onclick="app.toggleDirection(\'sent\')">보냄 (지출)</button>' +
+              '<button type="button" class="toggle-btn" data-direction="received" onclick="app.toggleDirection(\'received\')">받음 (수입)</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label for="ev-amount">금액 (원)</label>' +
+            '<input type="number" id="ev-amount" placeholder="50000" step="10000" min="0">' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label for="ev-memo">메모</label>' +
+            '<input type="text" id="ev-memo" placeholder="간단한 메모">' +
+          '</div>' +
+          '<button type="submit" class="submit-btn">저장하기</button>' +
+        '</form>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    requestAnimationFrame(function () { modal.classList.add('active'); });
+
+    $('#event-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var dirBtn = $('.direction-toggle .toggle-btn.active');
+      var direction = dirBtn ? dirBtn.dataset.direction : 'sent';
+      var eventData = {
+        id: generateId(),
+        type: $('#ev-type').value,
+        date: $('#ev-date').value,
+        direction: direction,
+        amount: $('#ev-amount').value || 0,
+        memo: $('#ev-memo').value.trim()
+      };
+
+      if (!contact.events) contact.events = [];
+      contact.events.push(eventData);
+      saveState();
+      closeModal();
+      showToast('경조사 내역이 추가되었습니다.');
+      showContactDetail(contactId);
     });
   }
-}
 
-/* ========================================
-   다운로드 / 인쇄
-======================================== */
-function downloadCanvas(canvasId, filenamePrefix) {
-  var el = document.getElementById(canvasId);
-  if (!el) return;
-  var scale = 2;
-  var sizeSelect = document.getElementById('pt-size');
-  if (sizeSelect && (sizeSelect.value === 'a3' || sizeSelect.value === 'b4')) scale = 3;
+  function deleteEvent(contactId, eventId) {
+    if (!confirm('이 경조사 내역을 삭제하시겠습니까?')) return;
+    var contact = state.contacts.find(function (c) { return c.id === contactId; });
+    if (!contact) return;
+    contact.events = contact.events.filter(function (e) { return e.id !== eventId; });
+    saveState();
+    showToast('삭제되었습니다.');
+    showContactDetail(contactId);
+  }
 
-  var btn = document.getElementById('pt-download-btn');
-  var originalText = btn.textContent;
-  btn.textContent = '생성 중...';
-  btn.disabled = true;
+  function toggleDirection(dir) {
+    $$('.direction-toggle .toggle-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.direction === dir);
+    });
+  }
 
-  html2canvas(el, { scale: scale, useCORS: true, backgroundColor: null, logging: false })
-    .then(function(c) {
-      var link = document.createElement('a');
-      var now = new Date();
-      var ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
-      link.download = filenamePrefix + '_' + ts + '.png';
-      link.href = c.toDataURL('image/png');
-      link.click();
-    })
-    .catch(function() { alert('이미지 생성에 실패했습니다.'); })
-    .finally(function() { btn.textContent = originalText; btn.disabled = false; });
-}
+  function closeModal() {
+    var modal = $('#event-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      setTimeout(function () { modal.remove(); }, 300);
+    }
+  }
 
-function printCanvas(canvasId) {
-  var el = document.getElementById(canvasId);
-  if (!el) return;
-  el.classList.add('print-target');
-  window.print();
-  el.classList.remove('print-target');
-}
+  // =========================================================================
+  // 설정 (Settings)
+  // =========================================================================
+  function renderSettings() {
+    var container = $('#settings-content');
+    if (!state.user) return;
 
-/* ========================================
-   이미지 업로드 / Google 검색
-======================================== */
-var currentImages = { pt: null };
+    var birth = new Date(state.user.birthDate);
+    var lunarBirth = LunarCalendar.solarToLunar(birth.getFullYear(), birth.getMonth() + 1, birth.getDate());
+    var totalEvents = state.contacts.reduce(function (s, c) { return s + (c.events ? c.events.length : 0); }, 0);
 
-function initImageFeatures() {
-  document.getElementById('pt-image-upload').addEventListener('change', function(e) { handleFileUpload(e, 'pt'); });
-  document.getElementById('pt-image-remove-btn').addEventListener('click', function() { removeImage('pt'); });
-  document.getElementById('pt-image-search-btn').addEventListener('click', openGoogleImageSearch);
-}
+    container.innerHTML =
+      '<div class="settings-section">' +
+        '<h3>👤 내 정보</h3>' +
+        '<div class="settings-info">' +
+          '<div class="settings-row">' +
+            '<span class="settings-label">이름</span>' +
+            '<span class="settings-value">' + state.user.name + '</span>' +
+          '</div>' +
+          '<div class="settings-row">' +
+            '<span class="settings-label">생년월일</span>' +
+            '<span class="settings-value">' +
+              formatDate(state.user.birthDate) +
+              (lunarBirth ? '<br><span class="settings-small">음력: ' + lunarBirth.year + '년 ' + lunarBirth.monthStr + '</span>' : '') +
+              (lunarBirth ? '<br><span class="settings-small">' + lunarBirth.yearGanZhi + '</span>' : '') +
+            '</span>' +
+          '</div>' +
+          '<div class="settings-row">' +
+            '<span class="settings-label">성별</span>' +
+            '<span class="settings-value">' + (state.user.gender === 'female' ? '여성' : '남성') + '</span>' +
+          '</div>' +
+          '<div class="settings-row">' +
+            '<span class="settings-label">기대수명</span>' +
+            '<span class="settings-value">' + (state.user.gender === 'female' ? '86' : '80') + '세 (한국인 평균)</span>' +
+          '</div>' +
+        '</div>' +
+        '<button class="settings-btn" onclick="app.editProfile()">✏️ 내 정보 수정</button>' +
+      '</div>' +
 
-function handleFileUpload(e, target) {
-  var file = e.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev) { setImage(target, ev.target.result); };
-  reader.readAsDataURL(file);
-}
+      '<div class="settings-section">' +
+        '<h3>📊 통계</h3>' +
+        '<div class="settings-info">' +
+          '<div class="settings-row">' +
+            '<span class="settings-label">등록된 사람</span>' +
+            '<span class="settings-value">' + state.contacts.length + '명</span>' +
+          '</div>' +
+          '<div class="settings-row">' +
+            '<span class="settings-label">총 경조사</span>' +
+            '<span class="settings-value">' + totalEvents + '건</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
 
-function setImage(target, dataUrl) {
-  if (!isSafeImageSrc(dataUrl)) return;
-  currentImages[target] = dataUrl;
-  var preview = document.getElementById(target + '-image-preview');
-  preview.innerHTML = '';
-  var img = document.createElement('img');
-  img.src = dataUrl;
-  img.alt = '미리보기';
-  preview.appendChild(img);
-  document.getElementById(target + '-image-remove-btn').style.display = 'inline-block';
-  triggerRender();
-}
+      '<div class="settings-section">' +
+        '<h3>💾 데이터 관리</h3>' +
+        '<button class="settings-btn" onclick="app.exportData()">📤 데이터 내보내기</button>' +
+        '<button class="settings-btn" onclick="app.importData()">📥 데이터 가져오기</button>' +
+        '<button class="settings-btn danger" onclick="app.resetData()">🗑️ 모든 데이터 초기화</button>' +
+        '<input type="file" id="import-file" accept=".json" style="display:none" onchange="app.handleImport(event)">' +
+      '</div>' +
 
-function removeImage(target) {
-  currentImages[target] = null;
-  document.getElementById(target + '-image-preview').innerHTML = '';
-  document.getElementById(target + '-image-remove-btn').style.display = 'none';
-  document.getElementById(target + '-image-upload').value = '';
-  triggerRender();
-}
+      '<div class="settings-section settings-footer">' +
+        '<p class="app-version">인생 시계 & 인맥 장부 v1.0</p>' +
+        '<p class="app-copyright">소중한 사람들과의 시간을 기록하세요</p>' +
+      '</div>';
+  }
 
-function triggerRender() {
-  if (ptFields && ptCanvas) renderPriceTag(ptFields, ptCanvas);
-}
+  function editProfile() {
+    $('#view-onboarding').classList.add('active');
+    $$('.view').forEach(function (v) {
+      if (v.id !== 'view-onboarding') v.classList.remove('active');
+    });
+    $('#bottom-nav').style.display = 'none';
 
-function openGoogleImageSearch() {
-  var product = document.getElementById('pt-product').value || '정육점 고기';
-  window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(product + ' 정육점'), '_blank');
-}
+    $('#input-name').value = state.user.name;
+    $('#input-birth').value = state.user.birthDate;
+    var genderRadio = $('input[name="gender"][value="' + state.user.gender + '"]');
+    if (genderRadio) genderRadio.checked = true;
 
-/* ========================================
-   확대/축소
-======================================== */
-var currentZoom = 100;
+    $('#onboarding-title').textContent = '내 정보 수정';
+    $('#onboarding-submit').textContent = '수정 완료';
+  }
 
-function initZoom() {
-  document.getElementById('zoom-in-btn').addEventListener('click', function() { setZoom(currentZoom + 20); });
-  document.getElementById('zoom-out-btn').addEventListener('click', function() { setZoom(currentZoom - 20); });
-  document.getElementById('zoom-reset-btn').addEventListener('click', function() { setZoom(100); });
-}
+  function exportData() {
+    var data = {
+      user: state.user,
+      contacts: state.contacts,
+      exportDate: new Date().toISOString(),
+      version: '1.0'
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '인생시계_백업_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('데이터가 저장되었습니다.');
+  }
 
-function setZoom(level) {
-  if (level < 40) level = 40;
-  if (level > 200) level = 200;
-  currentZoom = level;
-  var canvas = document.getElementById('pt-canvas');
-  canvas.style.transform = 'scale(' + (level / 100) + ')';
-  canvas.style.transformOrigin = 'top center';
-  document.getElementById('zoom-level').textContent = level + '%';
-}
+  function importData() {
+    $('#import-file').click();
+  }
 
-/* ========================================
-   텍스트 추가
-======================================== */
-var customTexts = [];
+  function handleImport(event) {
+    var file = event.target.files[0];
+    if (!file) return;
 
-function initCustomText() {
-  document.getElementById('pt-add-text-btn').addEventListener('click', addCustomText);
-  document.getElementById('pt-custom-text').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') addCustomText();
-  });
-}
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        if (data.user && data.contacts) {
+          if (confirm('기존 데이터를 덮어쓰시겠습니까?')) {
+            state.user = data.user;
+            state.contacts = data.contacts;
+            saveState();
+            showToast('데이터를 불러왔습니다.');
+            renderSettings();
+          }
+        } else {
+          showToast('올바른 백업 파일이 아닙니다.');
+        }
+      } catch (err) {
+        showToast('파일을 읽을 수 없습니다.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
 
-function addCustomText() {
-  var input = document.getElementById('pt-custom-text');
-  var text = input.value.trim();
-  if (!text) return;
-  customTexts.push({ text: text, size: document.getElementById('pt-text-size').value, color: document.getElementById('pt-text-color').value });
-  input.value = '';
-  renderCustomTextList();
-  renderCustomTextsOnCanvas();
-}
+  function resetData() {
+    if (!confirm('정말 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+    if (!confirm('정말로 삭제하시겠습니까? 마지막 확인입니다.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state.user = null;
+    state.contacts = [];
+    location.reload();
+  }
 
-function removeCustomText(index) {
-  customTexts.splice(index, 1);
-  renderCustomTextList();
-  renderCustomTextsOnCanvas();
-}
+  // =========================================================================
+  // 토스트 메시지 (Toast)
+  // =========================================================================
+  function showToast(message) {
+    var existing = $('.toast');
+    if (existing) existing.remove();
 
-function renderCustomTextList() {
-  var container = document.getElementById('pt-text-list');
-  if (!customTexts.length) { container.innerHTML = ''; return; }
-  container.innerHTML = customTexts.map(function(item, i) {
-    return '<div class="custom-text-item"><span class="text-color-dot" style="background:' + escapeAttr(item.color) + '"></span><span class="text-preview">' + escapeHtml(item.text) + ' (' + item.size + 'px)</span><button class="btn-remove-text" data-index="' + i + '">x</button></div>';
-  }).join('');
-  container.querySelectorAll('.btn-remove-text').forEach(function(btn) {
-    btn.addEventListener('click', function() { removeCustomText(parseInt(btn.dataset.index)); });
-  });
-}
+    var toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
 
-function renderCustomTextsOnCanvas() {
-  var area = document.querySelector('#pt-canvas .pt-custom-texts');
-  if (!area) return;
-  if (!customTexts.length) { area.innerHTML = ''; area.style.display = 'none'; return; }
-  area.style.display = 'block';
-  area.innerHTML = customTexts.map(function(item) {
-    return '<div class="pt-custom-text-line" style="font-size:' + item.size + 'px;color:' + escapeAttr(item.color) + '">' + escapeHtml(item.text) + '</div>';
-  }).join('');
-}
+    requestAnimationFrame(function () { toast.classList.add('show'); });
 
-/* ========================================
-   품목 저장/불러오기/수정/삭제
-======================================== */
-var STORAGE_KEY_PRODUCTS = 'butcher-saved-products';
-var editingProductId = null;
+    setTimeout(function () {
+      toast.classList.remove('show');
+      setTimeout(function () { toast.remove(); }, 300);
+    }, 2500);
+  }
 
-function initProductStorage() {
-  document.getElementById('pt-save-btn').addEventListener('click', saveCurrentProduct);
-  document.getElementById('new-product-btn').addEventListener('click', function() {
-    editingProductId = null;
-    clearForm();
-    document.getElementById('editor-title').textContent = '새 품목 만들기';
-    showEditor();
-  });
-  document.getElementById('back-to-list-btn').addEventListener('click', function() {
-    showList();
-  });
-}
+  // =========================================================================
+  // 초기화 (Initialization)
+  // =========================================================================
+  function init() {
+    loadState();
 
-function getProducts() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY_PRODUCTS) || '[]'); }
-  catch(e) { return []; }
-}
+    if (!state.user) {
+      showOnboarding();
+    } else {
+      $('#bottom-nav').style.display = '';
+      showView('life-clock');
+    }
 
-function saveProducts(arr) {
-  try { localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(arr)); }
-  catch(e) { alert('저장 공간이 부족합니다.'); }
-}
+    $$('.tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var view = this.dataset.view;
+        if (view === 'add-contact') {
+          showAddContact();
+        } else {
+          showView(view);
+        }
+      });
+    });
 
-function saveCurrentProduct() {
-  var name = document.getElementById('pt-product').value.trim();
-  if (!name) { alert('상품명을 입력해주세요.'); return; }
+    var searchInput = $('#contact-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        renderContacts();
+      });
+    }
+  }
 
-  var data = {
-    template: document.getElementById('pt-template').value,
-    orientation: document.getElementById('pt-orientation').value,
-    font: document.getElementById('pt-font').value,
-    category: document.getElementById('pt-category').value,
-    product: name,
-    origin: document.getElementById('pt-origin').value,
-    grade: document.getElementById('pt-grade').value,
-    price: document.getElementById('pt-price').value,
-    unit: document.getElementById('pt-unit').value,
-    originalPrice: document.getElementById('pt-original-price').value,
-    discount: document.getElementById('pt-discount').value,
-    subtitle: document.getElementById('pt-subtitle').value,
-    badge: document.getElementById('pt-badge').value,
-    size: document.getElementById('pt-size').value,
-    image: currentImages.pt || null,
-    customTexts: customTexts.slice(),
+  // =========================================================================
+  // Public API
+  // =========================================================================
+  window.app = {
+    showView: showView,
+    showContactDetail: showContactDetail,
+    showAddContact: showAddContact,
+    showEditContact: showEditContact,
+    showAddEvent: showAddEvent,
+    deleteContact: deleteContact,
+    deleteEvent: deleteEvent,
+    markContacted: markContacted,
+    toggleBirthType: toggleBirthType,
+    toggleDirection: toggleDirection,
+    closeModal: closeModal,
+    editProfile: editProfile,
+    exportData: exportData,
+    importData: importData,
+    handleImport: handleImport,
+    resetData: resetData,
+    goBackFromForm: goBackFromForm
   };
 
-  var products = getProducts();
-  if (editingProductId !== null) {
-    var idx = products.findIndex(function(p) { return p.id === editingProductId; });
-    if (idx >= 0) {
-      data.id = editingProductId;
-      products[idx] = data;
-    }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    data.id = Date.now();
-    products.push(data);
+    init();
   }
-
-  saveProducts(products);
-  renderSavedProductsList();
-  alert('저장되었습니다!');
-}
-
-function loadProduct(id) {
-  var products = getProducts();
-  var p = products.find(function(item) { return item.id === id; });
-  if (!p) return;
-
-  editingProductId = p.id;
-  document.getElementById('pt-template').value = p.template || 'classic-red';
-  document.getElementById('pt-orientation').value = p.orientation || 'portrait';
-  document.getElementById('pt-font').value = p.font || '';
-  document.getElementById('pt-category').value = p.category || 'beef';
-  document.getElementById('pt-product').value = p.product || '';
-  document.getElementById('pt-origin').value = p.origin || '';
-  document.getElementById('pt-grade').value = p.grade || '';
-  document.getElementById('pt-price').value = p.price || '';
-  document.getElementById('pt-unit').value = p.unit || '100g';
-  document.getElementById('pt-original-price').value = p.originalPrice || '';
-  document.getElementById('pt-discount').value = p.discount || '';
-  document.getElementById('pt-subtitle').value = p.subtitle || '';
-  document.getElementById('pt-badge').value = p.badge || '';
-  document.getElementById('pt-size').value = p.size || 'a4';
-
-  if (p.image && isSafeImageSrc(p.image)) {
-    currentImages.pt = p.image;
-    var preview = document.getElementById('pt-image-preview');
-    preview.innerHTML = '';
-    var img = document.createElement('img');
-    img.src = p.image;
-    img.alt = '미리보기';
-    preview.appendChild(img);
-    document.getElementById('pt-image-remove-btn').style.display = 'inline-block';
-  } else {
-    currentImages.pt = null;
-    document.getElementById('pt-image-preview').innerHTML = '';
-    document.getElementById('pt-image-remove-btn').style.display = 'none';
-  }
-
-  customTexts = (p.customTexts || []).slice();
-  renderCustomTextList();
-
-  document.getElementById('editor-title').textContent = '품목 수정: ' + p.product;
-  showEditor();
-  triggerRender();
-}
-
-function deleteProduct(id) {
-  if (!confirm('이 품목을 삭제하시겠습니까?')) return;
-  var products = getProducts().filter(function(p) { return p.id !== id; });
-  saveProducts(products);
-  renderSavedProductsList();
-}
-
-function clearForm() {
-  document.getElementById('pt-template').value = 'classic-red';
-  document.getElementById('pt-orientation').value = 'portrait';
-  document.getElementById('pt-font').value = '';
-  document.getElementById('pt-category').value = 'beef';
-  document.getElementById('pt-product').value = '';
-  document.getElementById('pt-origin').value = '';
-  document.getElementById('pt-grade').value = '';
-  document.getElementById('pt-price').value = '';
-  document.getElementById('pt-unit').value = '100g';
-  document.getElementById('pt-original-price').value = '';
-  document.getElementById('pt-discount').value = '';
-  document.getElementById('pt-subtitle').value = '';
-  document.getElementById('pt-badge').value = '';
-  document.getElementById('pt-size').value = 'a4';
-  currentImages.pt = null;
-  document.getElementById('pt-image-preview').innerHTML = '';
-  document.getElementById('pt-image-remove-btn').style.display = 'none';
-  document.getElementById('pt-image-upload').value = '';
-  customTexts = [];
-  renderCustomTextList();
-  triggerRender();
-}
-
-function showEditor() {
-  document.getElementById('editor-section').style.display = '';
-  document.getElementById('slide-section').style.display = 'none';
-}
-
-function showList() {
-  document.getElementById('editor-section').style.display = 'none';
-  document.getElementById('slide-section').style.display = 'none';
-}
-
-function renderSavedProductsList() {
-  var products = getProducts();
-  var container = document.getElementById('saved-products-list');
-  var slideBtn = document.getElementById('slide-view-btn');
-
-  if (!products.length) {
-    container.innerHTML = '<div class="no-products-msg">저장된 품목이 없습니다. "새 품목 만들기"를 눌러 시작하세요.</div>';
-    slideBtn.style.display = 'none';
-    return;
-  }
-
-  slideBtn.style.display = '';
-
-  container.innerHTML = products.map(function(p) {
-    var color = TEMPLATE_COLORS[p.template] || '#999';
-    var cat = CATEGORY_MAP[p.category] || CATEGORY_MAP.other;
-    return '<div class="saved-product-card" data-id="' + p.id + '">' +
-      '<button class="card-delete" data-id="' + p.id + '">x</button>' +
-      '<div class="card-name"><span class="card-template-dot" style="background:' + color + '"></span>' + escapeHtml(p.product || '상품명') + '</div>' +
-      '<div class="card-info">' + escapeHtml(cat.label) + ' | ' + escapeHtml(p.origin || '-') + '</div>' +
-      '<div class="card-price">' + (p.price ? formatPrice(p.price) + '원' : '-') + '</div>' +
-      '</div>';
-  }).join('');
-
-  container.querySelectorAll('.saved-product-card').forEach(function(card) {
-    card.addEventListener('click', function(e) {
-      if (e.target.classList.contains('card-delete')) return;
-      loadProduct(parseInt(card.dataset.id));
-    });
-  });
-
-  container.querySelectorAll('.card-delete').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      deleteProduct(parseInt(btn.dataset.id));
-    });
-  });
-}
-
-/* ========================================
-   슬라이드 뷰 / 일괄 인쇄
-======================================== */
-var currentSlide = 0;
-
-function initSlideView() {
-  document.getElementById('slide-view-btn').addEventListener('click', openSlideView);
-  document.getElementById('slide-close-btn').addEventListener('click', function() {
-    document.getElementById('slide-section').style.display = 'none';
-  });
-  document.getElementById('slide-prev-btn').addEventListener('click', function() { navigateSlide(-1); });
-  document.getElementById('slide-next-btn').addEventListener('click', function() { navigateSlide(1); });
-  document.getElementById('slide-print-all-btn').addEventListener('click', printAllProducts);
-}
-
-function openSlideView() {
-  var products = getProducts();
-  if (!products.length) return;
-  currentSlide = 0;
-  document.getElementById('editor-section').style.display = 'none';
-  document.getElementById('slide-section').style.display = '';
-  renderSlide(products, 0);
-}
-
-function navigateSlide(dir) {
-  var products = getProducts();
-  if (!products.length) return;
-  currentSlide += dir;
-  if (currentSlide < 0) currentSlide = products.length - 1;
-  if (currentSlide >= products.length) currentSlide = 0;
-  renderSlide(products, currentSlide);
-}
-
-function renderSlide(products, index) {
-  var area = document.getElementById('slide-canvas-area');
-  area.innerHTML = '';
-  var p = products[index];
-  area.appendChild(buildCanvasFromData(p));
-  document.getElementById('slide-counter').textContent = (index + 1) + ' / ' + products.length;
-}
-
-function buildCanvasFromData(p) {
-  var isLandscape = p.orientation === 'landscape';
-  var fontKey = p.font || '';
-  var cat = CATEGORY_MAP[p.category] || CATEGORY_MAP.other;
-  var hasImage = p.image && isSafeImageSrc(p.image);
-
-  var canvas = document.createElement('div');
-  canvas.className = 'price-tag-canvas ' + (p.template || 'classic-red') + (isLandscape ? ' landscape' : '');
-
-  var badgeHtml = '';
-  if (p.badge && BADGE_MAP[p.badge]) {
-    var b = BADGE_MAP[p.badge];
-    badgeHtml = '<span class="badge ' + b.cls + '">' + b.text + '</span>';
-  }
-
-  var bodyContent = '';
-  if (isLandscape && hasImage) {
-    bodyContent = '<div class="pt-image-area" style="display:block"><img src="' + escapeAttr(p.image) + '" alt="상품 이미지"></div>' +
-      '<div class="pt-body-right">' +
-        '<div class="pt-product-name">' + escapeHtml(p.product || '상품명') + '</div>' +
-        (p.origin ? '<div class="pt-origin">원산지: ' + escapeHtml(p.origin) + '</div>' : '') +
-        (p.grade ? '<div class="pt-grade-area"><span class="pt-grade">' + escapeHtml(p.grade) + '</span></div>' : '') +
-        (p.subtitle ? '<div class="pt-subtitle-area" style="display:block">' + escapeHtml(p.subtitle) + '</div>' : '') +
-      '</div>';
-  } else {
-    bodyContent = '<div class="pt-product-name">' + escapeHtml(p.product || '상품명') + '</div>' +
-      (p.origin ? '<div class="pt-origin">원산지: ' + escapeHtml(p.origin) + '</div>' : '') +
-      (p.grade ? '<div class="pt-grade-area"><span class="pt-grade">' + escapeHtml(p.grade) + '</span></div>' : '') +
-      (p.subtitle ? '<div class="pt-subtitle-area" style="display:block">' + escapeHtml(p.subtitle) + '</div>' : '') +
-      (hasImage ? '<div class="pt-image-area" style="display:block"><img src="' + escapeAttr(p.image) + '" alt="상품 이미지"></div>' : '');
-  }
-
-  var textsHtml = '';
-  if (p.customTexts && p.customTexts.length) {
-    textsHtml = '<div class="pt-custom-texts" style="display:block">' + p.customTexts.map(function(t) {
-      return '<div class="pt-custom-text-line" style="font-size:' + t.size + 'px;color:' + escapeAttr(t.color) + '">' + escapeHtml(t.text) + '</div>';
-    }).join('') + '</div>';
-  }
-
-  // 할인율 표시 (숫자 → XX%)
-  var discountNum = parseFloat(p.discount);
-  var discountDisplay = (!isNaN(discountNum) && discountNum > 0) ? discountNum + '%' : '';
-
-  canvas.innerHTML = '<div class="pt-badge-area">' + badgeHtml + '</div>' +
-    '<div class="pt-header"><span class="pt-category-icon">' + cat.icon + '</span><span class="pt-category-label">' + escapeHtml(cat.label) + '</span></div>' +
-    '<div class="pt-body">' + bodyContent + textsHtml + '</div>' +
-    '<div class="pt-price-area">' +
-      (p.originalPrice ? '<div class="pt-original-price" style="display:block">' + formatPrice(p.originalPrice) + '원</div>' : '') +
-      (discountDisplay ? '<div class="pt-discount-badge" style="display:inline-block">' + escapeHtml(discountDisplay) + '</div>' : '') +
-      '<div class="pt-price"><span class="pt-price-number">' + (p.price ? formatPrice(p.price) : '0') + '</span><span class="pt-price-won">원</span></div>' +
-      '<div class="pt-unit">/ ' + escapeHtml(p.unit || '100g') + '</div>' +
-    '</div>' +
-    '<div class="pt-footer"><span>신선한 고기, 정직한 가격</span></div>';
-
-  // 글씨체 적용
-  applyFontToCanvas(canvas, fontKey);
-
-  return canvas;
-}
-
-function printAllProducts() {
-  var products = getProducts();
-  if (!products.length) return;
-
-  var area = document.getElementById('print-all-area');
-  area.innerHTML = '';
-
-  products.forEach(function(p) {
-    var page = document.createElement('div');
-    page.className = 'print-page';
-    page.appendChild(buildCanvasFromData(p));
-    area.appendChild(page);
-  });
-
-  area.classList.add('printing');
-  window.print();
-  area.classList.remove('printing');
-}
+})();
