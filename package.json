@@ -1,7 +1,7 @@
 {
-  "name": "butcher-shop-poster-generator",
+  "name": "senior-life-manager",
   "version": "1.0.0",
-  "description": "정육점 POP 가격표 & 광고 포스터 자동 생성기",
+  "description": "인생 시계 & 인맥 장부 - 시니어를 위한 라이프 매니저",
   "private": true,
   "scripts": {
     "test": "jest --verbose"
