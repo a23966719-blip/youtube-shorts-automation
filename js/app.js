@@ -43,6 +43,145 @@
   ];
 
   // =========================================================================
+  // 오늘의 명언 (Daily Quotes)
+  // =========================================================================
+  const DAILY_QUOTES = [
+    { text: '인생은 짧고 예술은 길다.', author: '히포크라테스' },
+    { text: '천 리 길도 한 걸음부터.', author: '노자' },
+    { text: '배움에는 나이가 없다.', author: '한국 속담' },
+    { text: '오늘 할 수 있는 일을 내일로 미루지 마라.', author: '벤자민 프랭클린' },
+    { text: '늙어가는 것이 아니라 익어가는 것이다.', author: '법정 스님' },
+    { text: '웃으면 복이 온다.', author: '한국 속담' },
+    { text: '겨울이 오면 봄이 멀지 않으리.', author: '셸리' },
+    { text: '가장 좋은 때는 바로 지금이다.', author: '한국 속담' },
+    { text: '행복은 습관이다. 그것을 몸에 지녀라.', author: '허버드' },
+    { text: '나이가 들수록 지혜로워진다는 것은 축복이다.', author: '에머슨' },
+    { text: '건강은 최고의 재산이다.', author: '부처' },
+    { text: '사람이 꽃보다 아름다워.', author: '안도현' },
+    { text: '세월이 약이다.', author: '한국 속담' },
+    { text: '감사할 줄 아는 사람이 진정 부자다.', author: '키케로' },
+    { text: '삶이 있는 한 희망은 있다.', author: '키케로' },
+    { text: '좋은 친구는 인생의 보물이다.', author: '한국 속담' },
+    { text: '느리더라도 꾸준히 가는 사람이 이긴다.', author: '이솝' },
+    { text: '비 온 뒤에 땅이 굳어진다.', author: '한국 속담' },
+    { text: '웃음은 마음의 조깅이다.', author: '노먼 커즌스' },
+    { text: '오래 살려면 천천히 살아라.', author: '키케로' },
+    { text: '사랑은 나이를 잊게 한다.', author: '파스칼' },
+    { text: '작은 일에도 최선을 다하라.', author: '이순신' },
+    { text: '가는 말이 고와야 오는 말이 곱다.', author: '한국 속담' },
+    { text: '하루하루가 일 년 중 가장 좋은 날이다.', author: '에머슨' },
+    { text: '마음이 젊으면 영원히 젊다.', author: '한국 속담' },
+    { text: '꿈을 꾸는 사람에게 나이란 없다.', author: '월트 디즈니' },
+    { text: '지금 이 순간을 소중히 여기라.', author: '호라티우스' },
+    { text: '덕을 쌓으면 반드시 좋은 일이 생긴다.', author: '주역' },
+    { text: '급하게 먹는 밥이 체한다.', author: '한국 속담' },
+    { text: '사람의 가치는 나이로 정해지지 않는다.', author: '공자' },
+    { text: '되돌아보면 모든 것이 아름답다.', author: '한국 속담' }
+  ];
+
+  // =========================================================================
+  // 오늘의 운세 (Daily Fortune)
+  // =========================================================================
+  const FORTUNE_CATEGORIES = ['총운', '재물운', '건강운', '대인운'];
+
+  const FORTUNE_POOL = {
+    총운: [
+      '오늘은 활기찬 에너지가 넘치는 날입니다. 새로운 도전에 좋은 시기예요.',
+      '차분하게 하루를 보내면 좋은 결과가 찾아옵니다.',
+      '주변 사람들에게 좋은 소식이 전해질 수 있는 날입니다.',
+      '꾸준히 해오던 일에 성과가 나타나기 시작합니다.',
+      '예상치 못한 즐거운 일이 생길 수 있어요.',
+      '무리하지 말고 여유를 가지면 좋은 하루가 됩니다.',
+      '오늘 하루 긍정적인 마음을 유지하면 좋은 일이 생깁니다.',
+      '소소한 행복을 발견할 수 있는 날이에요.',
+      '오래 준비한 일이 드디어 결실을 맺을 수 있습니다.',
+      '평화롭고 안정된 하루를 보내실 수 있어요.',
+      '가벼운 외출이 기분 전환에 도움이 됩니다.',
+      '마음먹은 일이 순조롭게 풀려나가는 날입니다.'
+    ],
+    재물운: [
+      '작은 횡재수가 있을 수 있어요. 복권 한 장 어떠세요?',
+      '불필요한 지출을 줄이면 좋겠습니다.',
+      '오래된 물건을 정리하면 뜻밖의 수입이 생길 수 있어요.',
+      '안정적인 재정 운이 유지됩니다.',
+      '지인에게 빌려준 돈이 돌아올 수 있습니다.',
+      '오늘은 큰 지출보다는 절약하는 것이 좋겠어요.',
+      '투자보다는 저축이 유리한 날입니다.',
+      '가족을 위한 작은 선물이 행복을 가져다줍니다.',
+      '예상치 못한 곳에서 금전적 도움을 받을 수 있어요.',
+      '알뜰한 소비가 나중에 큰 도움이 됩니다.',
+      '마음을 나누면 재물도 따라옵니다.',
+      '오늘은 과소비를 조심하세요. 필요한 것만 사세요.'
+    ],
+    건강운: [
+      '가벼운 산책이 건강에 큰 도움이 되는 날이에요.',
+      '수분 섭취를 충분히 하면 컨디션이 좋아집니다.',
+      '오늘은 무리한 운동보다 스트레칭이 좋아요.',
+      '따뜻한 차 한 잔이 마음과 몸을 편안하게 해줍니다.',
+      '숙면을 취하면 내일이 더욱 활기차집니다.',
+      '제철 과일을 먹으면 건강에 좋습니다.',
+      '오늘은 소화가 잘 되는 음식 위주로 드세요.',
+      '가벼운 체조로 하루를 시작하면 좋겠어요.',
+      '햇볕을 쬐며 비타민 D를 보충하세요.',
+      '오늘 컨디션이 아주 좋은 날이에요!',
+      '무릎과 허리에 무리가 가지 않도록 조심하세요.',
+      '충분한 휴식이 최고의 보약입니다.'
+    ],
+    대인운: [
+      '오랜 친구에게 연락하면 반가운 소식을 들을 수 있어요.',
+      '가족과 함께하는 시간이 큰 행복을 가져다줍니다.',
+      '새로운 사람과의 만남이 즐거운 날이에요.',
+      '주변에 따뜻한 말 한마디가 관계를 더 깊게 해줍니다.',
+      '이웃과 나누는 정이 마음을 풍요롭게 합니다.',
+      '오해가 있었다면 오늘 풀어보는 것이 좋겠어요.',
+      '감사 인사를 전하면 좋은 인연이 이어집니다.',
+      '모임이나 약속이 있다면 적극 참여하세요.',
+      '자녀나 손주에게 먼저 연락하면 기뻐할 거예요.',
+      '오늘 만나는 사람이 좋은 인연이 될 수 있습니다.',
+      '작은 배려가 큰 감동을 주는 날입니다.',
+      '동창이나 옛 지인이 생각나면 전화해보세요.'
+    ]
+  };
+
+  /**
+   * 날짜와 띠 기반 시드로 결정적 난수 생성 (매일 같은 결과)
+   */
+  function dailySeed(category) {
+    var today = new Date();
+    var dateNum = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    var catIdx = FORTUNE_CATEGORIES.indexOf(category);
+    var seed = dateNum * 31 + catIdx * 7;
+    if (state.user && state.user.birthDate) {
+      var birth = new Date(state.user.birthDate);
+      seed += birth.getFullYear() * 3 + birth.getMonth() * 5 + birth.getDate() * 11;
+    }
+    return seed;
+  }
+
+  function getDailyFortune() {
+    var result = {};
+    FORTUNE_CATEGORIES.forEach(function (cat) {
+      var pool = FORTUNE_POOL[cat];
+      var seed = dailySeed(cat);
+      var idx = ((seed % pool.length) + pool.length) % pool.length;
+      result[cat] = pool[idx];
+    });
+
+    // 총운 점수 (60~99)
+    var scoreSeed = dailySeed('score');
+    result.score = 60 + (((scoreSeed % 40) + 40) % 40);
+
+    return result;
+  }
+
+  function getDailyQuote() {
+    var today = new Date();
+    var dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    var idx = dayOfYear % DAILY_QUOTES.length;
+    return DAILY_QUOTES[idx];
+  }
+
+  // =========================================================================
   // 상태 관리 (State Management)
   // =========================================================================
   let state = {
@@ -305,15 +444,66 @@
         '</div>' +
       '</div>' +
 
-      '<div class="message-card">' +
-        '<p class="message-text">&ldquo;' + getRandomMessage() + '&rdquo;</p>' +
-      '</div>' +
+      renderFortuneSection() +
+
+      renderQuoteSection() +
 
       renderNudgeSection();
 
     requestAnimationFrame(function () {
       $$('.gauge-animated').forEach(function (el) { el.classList.add('animate'); });
     });
+  }
+
+  function renderFortuneSection() {
+    var fortune = getDailyFortune();
+    var scoreColor = fortune.score >= 85 ? '#E74C3C' : fortune.score >= 70 ? '#FF9800' : '#4CAF50';
+    var scoreLabel = fortune.score >= 85 ? '대길' : fortune.score >= 70 ? '길' : '평온';
+    var today = new Date();
+    var dateStr = today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일';
+
+    // 사용자 띠 정보
+    var animalInfo = '';
+    if (state.user && state.user.birthDate) {
+      var birth = new Date(state.user.birthDate);
+      var lunar = LunarCalendar.solarToLunar(birth.getFullYear(), birth.getMonth() + 1, birth.getDate());
+      if (lunar) animalInfo = lunar.animal + '띠';
+    }
+
+    var html =
+      '<div class="fortune-section">' +
+        '<div class="fortune-header">' +
+          '<h3 class="fortune-title">🔮 오늘의 운세</h3>' +
+          '<span class="fortune-date">' + dateStr + (animalInfo ? ' · ' + animalInfo : '') + '</span>' +
+        '</div>' +
+        '<div class="fortune-score">' +
+          '<div class="fortune-score-circle" style="border-color:' + scoreColor + '">' +
+            '<span class="fortune-score-num" style="color:' + scoreColor + '">' + fortune.score + '</span>' +
+            '<span class="fortune-score-label">' + scoreLabel + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="fortune-details">';
+
+    FORTUNE_CATEGORIES.forEach(function (cat) {
+      var icon = cat === '총운' ? '⭐' : cat === '재물운' ? '💰' : cat === '건강운' ? '💪' : '🤝';
+      html +=
+        '<div class="fortune-item">' +
+          '<div class="fortune-cat">' + icon + ' ' + cat + '</div>' +
+          '<div class="fortune-text">' + fortune[cat] + '</div>' +
+        '</div>';
+    });
+
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderQuoteSection() {
+    var quote = getDailyQuote();
+    return '<div class="quote-section">' +
+      '<div class="quote-icon">📖</div>' +
+      '<p class="quote-text">&ldquo;' + quote.text + '&rdquo;</p>' +
+      '<p class="quote-author">— ' + quote.author + '</p>' +
+    '</div>';
   }
 
   function renderNudgeSection() {
