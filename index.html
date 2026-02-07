@@ -2,142 +2,271 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="인생 시계 & 인맥 장부 - 남은 건강 수명을 확인하고 소중한 사람들과의 관계를 챙기세요">
-  <meta name="theme-color" content="#1B6B93">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>인생 시계 & 인맥 장부</title>
-
-  <!-- Google Fonts: Noto Sans KR (한국어 최적화) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="정육점 POP 가격표를 브라우저에서 손쉽게 만들 수 있는 무료 생성기입니다.">
+  <title>정육점 POP 가격표 생성기</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
 <body>
-  <div class="app-container">
+  <header class="app-header">
+    <h1>정육점 POP 가격표 생성기</h1>
+    <p class="subtitle">클릭 몇 번으로 전문적인 가격표를 만들어보세요</p>
+  </header>
 
-    <!-- ================================================
-         온보딩 (Onboarding) - 첫 방문 시
-    ================================================ -->
-    <div id="view-onboarding" class="view">
-      <div class="onboarding-icon">⏰</div>
-      <h1 id="onboarding-title" class="onboarding-title">환영합니다!</h1>
-      <p class="onboarding-subtitle">
-        남은 시간을 소중히,<br>
-        소중한 사람을 가까이.
-      </p>
-
-      <form id="onboarding-form" class="onboarding-form">
-        <div class="form-group">
-          <label for="input-name">이름</label>
-          <input type="text" id="input-name" placeholder="이름을 입력하세요" required autocomplete="name">
+  <main class="app-main">
+    <!-- 저장된 품목 목록 -->
+    <section class="saved-products-section">
+      <div class="saved-products-header">
+        <h2>저장된 품목</h2>
+        <div class="saved-products-actions">
+          <button id="slide-view-btn" class="btn btn-small" style="display:none;">슬라이드 보기 / 일괄 출력</button>
+          <button id="new-product-btn" class="btn btn-primary btn-small">+ 새 품목 만들기</button>
         </div>
+      </div>
+      <div id="saved-products-list" class="saved-products-grid"></div>
+    </section>
 
-        <div class="form-group">
-          <label for="input-birth">생년월일</label>
-          <input type="date" id="input-birth" required>
-        </div>
+    <!-- 편집 영역 -->
+    <section id="editor-section" class="editor-section">
+      <div class="editor-layout">
+        <div class="controls-panel">
+          <div class="controls-header">
+            <h2 id="editor-title">새 품목 만들기</h2>
+            <button id="back-to-list-btn" class="btn btn-small">목록으로</button>
+          </div>
 
-        <div class="form-group">
-          <label>성별</label>
-          <div class="gender-toggle">
-            <div class="gender-option">
-              <input type="radio" name="gender" id="gender-male" value="male" checked>
-              <label for="gender-male">👨 남성</label>
+          <div class="form-group">
+            <label for="pt-template">템플릿 선택</label>
+            <select id="pt-template">
+              <option value="classic-red">클래식 레드</option>
+              <option value="premium-black">프리미엄 블랙</option>
+              <option value="fresh-green">신선 그린</option>
+              <option value="sale-yellow">세일 옐로우</option>
+              <option value="modern-blue">모던 블루</option>
+              <option value="market-korean">전통시장</option>
+              <option value="hanwoo-premium">한우명가</option>
+              <option value="butcher-craft">정육장인</option>
+              <option value="mega-sale">초특가</option>
+              <option value="clean-minimal">깔끔 심플</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-orientation">방향</label>
+            <select id="pt-orientation">
+              <option value="portrait">세로 (기본)</option>
+              <option value="landscape">가로</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-font">글씨체</label>
+            <select id="pt-font">
+              <option value="">기본 (Noto Sans)</option>
+              <option value="black-han-sans">블랙한산스 (굵은 고딕)</option>
+              <option value="do-hyeon">도현체</option>
+              <option value="jua">주아체</option>
+              <option value="bagel-fat-one">배이글 팻 원</option>
+              <option value="gasoek-one">가속체 (초굵은)</option>
+              <option value="yeon-sung">연성체 (붓글씨)</option>
+              <option value="dongle">동글체</option>
+              <option value="gugi">구기체</option>
+              <option value="nanum-pen">나눔펜스크립트</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-category">육류 카테고리</label>
+            <select id="pt-category">
+              <option value="beef">소고기</option>
+              <option value="pork">돼지고기</option>
+              <option value="chicken">닭고기</option>
+              <option value="lamb">양고기</option>
+              <option value="duck">오리고기</option>
+              <option value="other">기타</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-product">상품명</label>
+            <input type="text" id="pt-product" placeholder="예: 한우 1++ 등심" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="pt-origin">원산지</label>
+            <input type="text" id="pt-origin" placeholder="예: 국내산 (한우)" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="pt-grade">등급</label>
+            <input type="text" id="pt-grade" placeholder="예: 1++ / 1+ / 1 / 2 / 3" maxlength="10">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="pt-price">판매가 (원)</label>
+              <input type="number" id="pt-price" placeholder="예: 45000" min="0">
             </div>
-            <div class="gender-option">
-              <input type="radio" name="gender" id="gender-female" value="female">
-              <label for="gender-female">👩 여성</label>
+            <div class="form-group flex-1">
+              <label for="pt-unit">단위</label>
+              <select id="pt-unit">
+                <option value="100g">100g</option>
+                <option value="200g">200g</option>
+                <option value="300g">300g</option>
+                <option value="500g">500g</option>
+                <option value="600g">600g</option>
+                <option value="1kg">1kg</option>
+                <option value="1pack">1팩</option>
+                <option value="1ea">1마리</option>
+              </select>
             </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="pt-original-price">정상가 (원, 선택)</label>
+              <input type="number" id="pt-original-price" placeholder="할인 전 가격" min="0">
+            </div>
+            <div class="form-group flex-1">
+              <label for="pt-discount">할인율 (%)</label>
+              <input type="number" id="pt-discount" placeholder="예: 30" min="0" max="99">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-subtitle">보조 문구 (선택)</label>
+            <input type="text" id="pt-subtitle" placeholder="예: 오늘만 특가!" maxlength="20">
+          </div>
+
+          <div class="form-group">
+            <label for="pt-badge">뱃지 (선택)</label>
+            <select id="pt-badge">
+              <option value="">없음</option>
+              <option value="best">BEST</option>
+              <option value="new">NEW</option>
+              <option value="hot">HOT</option>
+              <option value="sale">SALE</option>
+              <option value="recommend">추천</option>
+              <option value="limited">한정</option>
+              <option value="today">오늘특가</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>상품 이미지 (선택)</label>
+            <div class="image-upload-area">
+              <input type="file" id="pt-image-upload" accept="image/*" class="file-input">
+              <label for="pt-image-upload" class="file-label">파일 선택</label>
+              <button id="pt-image-search-btn" class="btn btn-small">Google 이미지 검색</button>
+              <button id="pt-image-remove-btn" class="btn btn-small btn-danger-small" style="display:none;">이미지 제거</button>
+            </div>
+            <div id="pt-image-preview" class="image-thumb-preview"></div>
+          </div>
+
+          <div class="form-group">
+            <label>텍스트 추가</label>
+            <div class="text-add-area">
+              <input type="text" id="pt-custom-text" placeholder="추가할 텍스트 입력" maxlength="30">
+              <select id="pt-text-size">
+                <option value="14">작게</option>
+                <option value="18" selected>보통</option>
+                <option value="24">크게</option>
+                <option value="32">매우 크게</option>
+              </select>
+              <select id="pt-text-color">
+                <option value="#d32f2f">빨강</option>
+                <option value="#212121" selected>검정</option>
+                <option value="#ffffff">흰색</option>
+                <option value="#1565c0">파랑</option>
+                <option value="#2e7d32">초록</option>
+                <option value="#f57f17">주황</option>
+              </select>
+              <button id="pt-add-text-btn" class="btn btn-small">추가</button>
+            </div>
+            <div id="pt-text-list" class="custom-text-list"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="pt-size">출력 크기</label>
+            <select id="pt-size">
+              <option value="a5">A5 (148x210mm)</option>
+              <option value="a4" selected>A4 (210x297mm)</option>
+              <option value="a3">A3 (297x420mm)</option>
+              <option value="b5">B5 (182x257mm)</option>
+            </select>
+          </div>
+
+          <div class="btn-group">
+            <button id="pt-save-btn" class="btn btn-primary">저장</button>
+            <button id="pt-download-btn" class="btn btn-success">이미지 다운로드</button>
+            <button id="pt-print-btn" class="btn btn-print">인쇄하기</button>
           </div>
         </div>
 
-        <button type="submit" id="onboarding-submit" class="onboarding-submit">시작하기</button>
-      </form>
-    </div>
-
-    <!-- ================================================
-         인생 시계 (Life Clock)
-    ================================================ -->
-    <div id="view-life-clock" class="view">
-      <div id="life-clock-content">
-        <!-- JS에서 동적 렌더링 -->
-      </div>
-    </div>
-
-    <!-- ================================================
-         인맥 장부 - 연락처 목록 (Contacts)
-    ================================================ -->
-    <div id="view-contacts" class="view">
-      <div class="contacts-header">
-        <h2>👥 인맥 장부</h2>
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="search" id="contact-search" class="search-bar"
-            placeholder="이름 또는 관계로 검색" aria-label="연락처 검색">
+        <div class="preview-panel">
+          <div class="preview-toolbar">
+            <h2>미리보기</h2>
+            <div class="zoom-controls">
+              <button id="zoom-out-btn" class="btn btn-small" title="축소">-</button>
+              <span id="zoom-level">100%</span>
+              <button id="zoom-in-btn" class="btn btn-small" title="확대">+</button>
+              <button id="zoom-reset-btn" class="btn btn-small" title="원래 크기">원본</button>
+            </div>
+          </div>
+          <div class="preview-wrapper" id="pt-preview-wrapper">
+            <div id="pt-canvas" class="price-tag-canvas classic-red">
+              <div class="pt-badge-area"></div>
+              <div class="pt-header">
+                <span class="pt-category-icon"></span>
+                <span class="pt-category-label">소고기</span>
+              </div>
+              <div class="pt-body">
+                <div class="pt-product-name">한우 1++ 등심</div>
+                <div class="pt-origin">원산지: 국내산 (한우)</div>
+                <div class="pt-grade-area"><span class="pt-grade">1++</span></div>
+                <div class="pt-subtitle-area"></div>
+                <div class="pt-image-area" style="display:none;"></div>
+                <div class="pt-custom-texts"></div>
+              </div>
+              <div class="pt-price-area">
+                <div class="pt-original-price"></div>
+                <div class="pt-discount-badge"></div>
+                <div class="pt-price">
+                  <span class="pt-price-number">45,000</span>
+                  <span class="pt-price-won">원</span>
+                </div>
+                <div class="pt-unit">/ 100g</div>
+              </div>
+              <div class="pt-footer"><span>신선한 고기, 정직한 가격</span></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div id="contacts-content">
-        <!-- JS에서 동적 렌더링 -->
+    </section>
+
+    <!-- 슬라이드 뷰 -->
+    <section id="slide-section" class="slide-section" style="display:none;">
+      <div class="slide-header">
+        <h2>슬라이드 보기</h2>
+        <div class="slide-actions">
+          <button id="slide-prev-btn" class="btn btn-small">이전</button>
+          <span id="slide-counter">1 / 1</span>
+          <button id="slide-next-btn" class="btn btn-small">다음</button>
+          <button id="slide-print-all-btn" class="btn btn-print">전체 인쇄</button>
+          <button id="slide-close-btn" class="btn btn-small">닫기</button>
+        </div>
       </div>
-    </div>
+      <div id="slide-canvas-area" class="slide-canvas-area"></div>
+      <!-- 인쇄용 숨겨진 영역 -->
+      <div id="print-all-area" class="print-all-area"></div>
+    </section>
+  </main>
 
-    <!-- ================================================
-         연락처 상세 (Contact Detail)
-    ================================================ -->
-    <div id="view-contact-detail" class="view">
-      <div id="contact-detail-content">
-        <!-- JS에서 동적 렌더링 -->
-      </div>
-    </div>
+  <footer class="app-footer">
+    <p>&copy; 2026 정육점 POP 가격표 생성기</p>
+  </footer>
 
-    <!-- ================================================
-         연락처 추가/수정 (Contact Form)
-    ================================================ -->
-    <div id="view-contact-form" class="view">
-      <div id="contact-form-content">
-        <!-- JS에서 동적 렌더링 -->
-      </div>
-    </div>
-
-    <!-- ================================================
-         설정 (Settings)
-    ================================================ -->
-    <div id="view-settings" class="view">
-      <div id="settings-content">
-        <!-- JS에서 동적 렌더링 -->
-      </div>
-    </div>
-
-    <!-- ================================================
-         하단 네비게이션 (Bottom Navigation)
-    ================================================ -->
-    <nav id="bottom-nav" class="bottom-nav" style="display: none;" aria-label="메인 메뉴">
-      <button class="tab-btn active" data-view="life-clock" aria-label="인생 시계">
-        <span class="tab-icon">⏰</span>
-        <span class="tab-label">인생시계</span>
-      </button>
-      <button class="tab-btn" data-view="contacts" aria-label="인맥 장부">
-        <span class="tab-icon">👥</span>
-        <span class="tab-label">인맥장부</span>
-      </button>
-      <button class="tab-btn tab-add" data-view="add-contact" aria-label="새 연락처 추가">
-        <span class="tab-icon">＋</span>
-        <span class="tab-label">추가</span>
-      </button>
-      <button class="tab-btn" data-view="settings" aria-label="설정">
-        <span class="tab-icon">⚙️</span>
-        <span class="tab-label">설정</span>
-      </button>
-    </nav>
-
-  </div>
-
-  <!-- Scripts -->
-  <script src="js/lunar.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
